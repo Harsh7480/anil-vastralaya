@@ -1,7 +1,7 @@
 import { Poppins } from "next/font/google"
 import "./globals.css"
 
-// ✅ Use supported font
+//Use supported font
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
