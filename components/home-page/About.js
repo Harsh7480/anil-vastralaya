@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function AboutSection() {
   return (
@@ -23,7 +24,7 @@ export default function AboutSection() {
             <p className="text-sm tracking-[4px] text-gray-600 mb-3">ABOUT</p>
 
             <h2 className="text-4xl md:text-5xl font-serif text-gray-900 mb-6 leading-tight">
-              Label Anju Kumar
+              Anil Vastralaya
             </h2>
 
             <div className="space-y-6 text-gray-700 leading-relaxed">
@@ -43,9 +44,11 @@ export default function AboutSection() {
               </p>
             </div>
 
-            <button className="mt-10 border border-gray-700 px-8 py-3.5 text-sm tracking-widest text-black hover:bg-black hover:text-white transition duration-300">
-              READ OUR STORY
-            </button>
+            <Link href="/about">
+              <button className="cursor-pointer mt-10 border border-gray-700 px-8 py-3.5 text-sm tracking-widest text-black hover:bg-black hover:text-white transition duration-300">
+                READ OUR STORY
+              </button>
+            </Link>
           </div>
         </div>
       </div>

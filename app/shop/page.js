@@ -24,7 +24,7 @@ const categories = [
   },
   {
     id: 'men',
-    name: 'Men\'s Collection',
+    name: "Men's Collection",
     description: 'Shirts, kurtas, and suits for men',
     image: '/images/men.png',
   },
@@ -93,7 +93,7 @@ const products = [
   },
   {
     id: 7,
-    name: 'Men\'s Silk Kurta',
+    name: "Men's Silk Kurta",
     price: 1499,
     originalPrice: 2499,
     image: '/images/product3.png',
@@ -120,9 +120,11 @@ export default function ShopPage() {
   const [activeFilter, setActiveFilter] = useState('All')
 
   const filteredProducts = products.filter((product) => {
-    const matchesCategory = activeCategory === 'all' || product.category === activeCategory
+    const matchesCategory =
+      activeCategory === 'all' || product.category === activeCategory
     const matchesFilter =
-      activeFilter === 'All' || product.subcategory === activeFilter.toLowerCase()
+      activeFilter === 'All' ||
+      product.subcategory === activeFilter.toLowerCase()
     return matchesCategory && matchesFilter
   })
 
@@ -132,9 +134,12 @@ export default function ShopPage() {
       <section className="bg-[#FFF8E7] py-16">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-sm tracking-[4px] text-gray-600 mb-3">EXPLORE</p>
-          <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4">Shop</h1>
+          <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4">
+            Shop
+          </h1>
           <p className="text-gray-600 max-w-xl mx-auto">
-            Discover our curated collection of ethnic and contemporary fashion for every occasion.
+            Discover our curated collection of ethnic and contemporary fashion
+            for every occasion.
           </p>
         </div>
       </section>
@@ -142,7 +147,9 @@ export default function ShopPage() {
       {/* Categories */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-2xl font-serif text-gray-900 mb-10 text-center">Shop by Category</h2>
+          <h2 className="text-2xl font-serif text-gray-900 mb-10 text-center">
+            Shop by Category
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.map((category) => (
               <button
@@ -163,8 +170,12 @@ export default function ShopPage() {
                       className="object-contain group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{category.name}</h3>
-                  <p className="text-sm text-gray-600">{category.description}</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {category.name}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {category.description}
+                  </p>
                 </div>
               </button>
             ))}
@@ -213,7 +224,9 @@ export default function ShopPage() {
 
           {filteredProducts.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-gray-600 text-lg">No products found in this category.</p>
+              <p className="text-gray-600 text-lg">
+                No products found in this category.
+              </p>
               <button
                 onClick={() => {
                   setActiveCategory('all')
@@ -243,7 +256,9 @@ export default function ShopPage() {
                     </span>
                   </div>
                   <div className="p-5">
-                    <h3 className="font-medium text-gray-900 mb-2">{product.name}</h3>
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      {product.name}
+                    </h3>
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-semibold text-gray-900">
                         ₹{product.price.toLocaleString()}
