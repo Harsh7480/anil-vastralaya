@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
 import {
   Star,
   TrendingUp,
@@ -17,7 +19,9 @@ import {
 } from 'lucide-react'
 
 export default function AdminDashboard() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     name: '',
     review: '',
@@ -32,15 +36,21 @@ export default function AdminDashboard() {
     activeItems: 0,
   })
 
-  // Load testimonials from localStorage on client side only
-  useEffect(() => {
-    setIsClient(true)
-    const savedTestimonials = localStorage.getItem('testimonials')
-    if (savedTestimonials) {
-      const parsed = JSON.parse(savedTestimonials)
-      setTestimonials(parsed)
-      updateStats(parsed)
+  const loadTestimonials = async () => {
+    try {
+      setLoading(true)
+      const data = await fetchAPI('/testimonials')
+      setTestimonials(data)
+      updateStats(data)
+    } catch (err) {
+      console.error('Failed to load testimonials:', err)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    loadTestimonials()
   }, [])
 
   const updateStats = (data) => {
@@ -61,44 +71,93 @@ export default function AdminDashboard() {
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setSubmitting(true)
 
-    const newTestimonial = {
-      id: Date.now(),
-      ...form,
-      rating: parseInt(form.rating),
-      date: new Date().toLocaleDateString(),
-      status: 'active',
+    try {
+      const newTestimonial = await fetchAPI('/testimonials', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name,
+          review: form.review,
+          rating: parseInt(form.rating),
+          status: 'active',
+        }),
+      })
+
+      const updatedTestimonials = [newTestimonial, ...testimonials]
+      setTestimonials(updatedTestimonials)
+      updateStats(updatedTestimonials)
+
+      setForm({
+        name: '',
+        review: '',
+        rating: '',
+      })
+
+      toast.success('Testimonial added successfully!')
+    } catch (err) {
+      toast.error('Failed to add testimonial: ' + err.message)
+    } finally {
+      setSubmitting(false)
     }
-
-    const updatedTestimonials = [newTestimonial, ...testimonials]
-    setTestimonials(updatedTestimonials)
-    localStorage.setItem('testimonials', JSON.stringify(updatedTestimonials))
-    updateStats(updatedTestimonials)
-
-    // Reset form
-    setForm({
-      name: '',
-      review: '',
-      rating: '',
-    })
-
-    alert('✨ Testimonial added successfully!')
   }
 
-  const deleteTestimonial = (id) => {
+  const deleteTestimonial = async (id) => {
     if (confirm('Are you sure you want to delete this testimonial?')) {
-      const updated = testimonials.filter((t) => t.id !== id)
-      setTestimonials(updated)
-      localStorage.setItem('testimonials', JSON.stringify(updated))
-      updateStats(updated)
-      alert('🗑️ Testimonial deleted successfully!')
+      try {
+        await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
+        const updated = testimonials.filter((t) => t.id !== id)
+        setTestimonials(updated)
+        updateStats(updated)
+        toast.success('Testimonial deleted successfully!')
+      } catch (err) {
+        toast.error('Failed to delete testimonial: ' + err.message)
+      }
     }
   }
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  const deleteAllTestimonials = async () => {
+    if (confirm('Delete all testimonials?')) {
+      try {
+        for (const t of testimonials) {
+          await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
+        }
+        setTestimonials([])
+        updateStats([])
+        toast.success('All testimonials deleted!')
+      } catch (err) {
+        toast.error('Failed to delete all testimonials: ' + err.message)
+      }
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await loadTestimonials()
+      toast.success('Stats refreshed!')
+    } catch (err) {
+      toast.error('Failed to refresh: ' + err.message)
+    }
+  }
+
+  const handleClearAll = async () => {
+    if (confirm('Clear all data?')) {
+      try {
+        for (const t of testimonials) {
+          await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
+        }
+        setTestimonials([])
+        updateStats([])
+        toast.success('All data cleared!')
+      } catch (err) {
+        toast.error('Failed to clear data: ' + err.message)
+      }
+    }
+  }
+
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -204,7 +263,7 @@ export default function AdminDashboard() {
                 placeholder="Enter customer name"
                 value={form.name}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black focus:border-transparent transition"
+                className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black focus:border-transparent transition text-gray-900 placeholder-gray-500"
                 required
               />
             </div>
@@ -219,7 +278,7 @@ export default function AdminDashboard() {
                 placeholder="Write customer review..."
                 value={form.review}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black focus:border-transparent transition"
+                className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black focus:border-transparent transition text-gray-900 placeholder-gray-500"
                 rows="4"
                 required
               />
@@ -240,7 +299,7 @@ export default function AdminDashboard() {
                   min="1"
                   max="5"
                   step="1"
-                  className="w-24 border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black"
+                  className="w-24 border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-black text-gray-900 placeholder-gray-500"
                   required
                 />
                 <div className="flex text-2xl space-x-1">
@@ -266,10 +325,11 @@ export default function AdminDashboard() {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition transform hover:scale-[1.02] flex items-center justify-center space-x-2"
+              disabled={submitting}
+              className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition transform hover:scale-[1.02] flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <Plus className="w-5 h-5" />
-              <span>Add Testimonial</span>
+              <span>{submitting ? 'Adding...' : 'Add Testimonial'}</span>
             </button>
           </form>
         </div>
@@ -352,14 +412,7 @@ export default function AdminDashboard() {
             {testimonials.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => {
-                    if (confirm('Delete all testimonials?')) {
-                      setTestimonials([])
-                      localStorage.removeItem('testimonials')
-                      updateStats([])
-                      alert('All testimonials deleted!')
-                    }
-                  }}
+                  onClick={deleteAllTestimonials}
                   className="text-red-600 text-sm hover:text-red-700 transition flex items-center space-x-1"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -406,11 +459,7 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={() => {
-                const saved = localStorage.getItem('testimonials')
-                if (saved) updateStats(JSON.parse(saved))
-                alert('Stats refreshed!')
-              }}
+              onClick={handleRefresh}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg transition flex items-center justify-center space-x-2 group"
             >
               <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition duration-500" />
@@ -418,14 +467,7 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={() => {
-                if (confirm('Clear all data?')) {
-                  setTestimonials([])
-                  localStorage.removeItem('testimonials')
-                  updateStats([])
-                  alert('All data cleared!')
-                }
-              }}
+              onClick={handleClearAll}
               className="bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-lg transition flex items-center justify-center space-x-2 group"
             >
               <Trash2 className="w-5 h-5 group-hover:scale-110 transition" />

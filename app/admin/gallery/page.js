@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
 import {
   Plus,
   Edit,
@@ -17,8 +19,26 @@ import {
   EyeOff,
 } from 'lucide-react'
 
+function AdminGalleryImage({ src, alt }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || src === '/images/placeholder.png' || hasError) {
+    return <Grid className="w-6 h-6 text-[#98635D]" />
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover"
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
 export default function GalleryPage() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
   const [galleryItems, setGalleryItems] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -32,103 +52,26 @@ export default function GalleryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [loading, setLoading] = useState(true)
 
   const galleryCategories = ['New Arrivals', 'Bridal', 'Festive', 'Casual']
 
-  // Load gallery items from localStorage on client side only
   useEffect(() => {
-    setIsClient(true)
-    const savedGallery = localStorage.getItem('gallery')
-    if (savedGallery) {
-      const parsed = JSON.parse(savedGallery)
-      setGalleryItems(parsed)
-    } else {
-      // Default gallery items
-      const defaultGallery = [
-        {
-          id: 1,
-          image: '/images/product1.png',
-          category: 'New Arrivals',
-          title: 'Silk Saree Collection',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          image: '/images/product2.png',
-          category: 'Bridal',
-          title: 'Bridal Lehenga',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          image: '/images/product3.png',
-          category: 'Festive',
-          title: 'Festive Kurtas',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 4,
-          image: '/images/product4.jpg',
-          category: 'Casual',
-          title: 'Casual Elegance',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 5,
-          image: '/images/Gemini_Generated_Image_h3152bh3152bh315.png',
-          category: 'Bridal',
-          title: 'Royal Bridal Set',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 6,
-          image: '/images/Gemini_Generated_Image_mfee8qmfee8qmfee.png',
-          category: 'New Arrivals',
-          title: 'Designer Sets',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 7,
-          image: '/images/Gemini_Generated_Image_pbi32opbi32opbi3.png',
-          category: 'Festive',
-          title: 'Banarasi Collection',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 8,
-          image: '/images/Gemini_Generated_Image_r8znntr8znntr8zn.png',
-          category: 'Casual',
-          title: 'Party Wear',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 9,
-          image: '/images/Gemini_Generated_Image_shew83shew83shew.png',
-          category: 'New Arrivals',
-          title: "Men's Collection",
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-      ]
-      setGalleryItems(defaultGallery)
-      localStorage.setItem('gallery', JSON.stringify(defaultGallery))
-    }
+    loadGallery()
   }, [])
 
-  // Save gallery items to localStorage
-  useEffect(() => {
-    if (galleryItems.length > 0 && isClient) {
-      localStorage.setItem('gallery', JSON.stringify(galleryItems))
+  const loadGallery = async () => {
+    try {
+      setLoading(true)
+      const data = await fetchAPI('/gallery')
+      setGalleryItems(data)
+    } catch (error) {
+      console.error('Failed to load gallery:', error)
+      setGalleryItems([])
+    } finally {
+      setLoading(false)
     }
-  }, [galleryItems, isClient])
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -177,72 +120,80 @@ export default function GalleryPage() {
     setIsModalOpen(true)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!formData.title || !formData.category) {
-      alert('Please fill all required fields!')
+      toast.warning('Please fill all required fields!')
       return
     }
 
-    if (editingItem) {
-      // Update existing gallery item
-      const updatedGallery = galleryItems.map((item) =>
-        item.id === editingItem.id
-          ? {
-              ...item,
-              title: formData.title,
-              category: formData.category,
-              image: formData.image,
-              status: formData.status,
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
-      )
-      setGalleryItems(updatedGallery)
-      alert('Gallery item updated successfully!')
-    } else {
-      // Add new gallery item
-      const newItem = {
-        id: Date.now(),
-        title: formData.title,
-        category: formData.category,
-        image: formData.image || '/images/placeholder.png',
-        status: formData.status,
-        createdAt: new Date().toISOString(),
+    try {
+      if (editingItem) {
+        await fetchAPI(`/gallery/${editingItem.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: formData.title,
+            category: formData.category,
+            image: formData.image,
+            status: formData.status,
+          }),
+        })
+        toast.success('Gallery item updated successfully!')
+      } else {
+        await fetchAPI('/gallery', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: formData.title,
+            category: formData.category,
+            image: formData.image || '/images/placeholder.png',
+            status: formData.status,
+          }),
+        })
+        toast.success('Gallery item added successfully!')
       }
-      setGalleryItems([...galleryItems, newItem])
-      alert('Gallery item added successfully!')
-    }
 
-    setIsModalOpen(false)
-    setFormData({
-      title: '',
-      category: '',
-      image: '',
-      status: 'active',
-    })
-    setImagePreview('')
+      await loadGallery()
+      setIsModalOpen(false)
+      setFormData({
+        title: '',
+        category: '',
+        image: '',
+        status: 'active',
+      })
+      setImagePreview('')
+    } catch (error) {
+      toast.error('Failed to save gallery item: ' + error.message)
+    }
   }
 
-  const deleteItem = (id) => {
+  const deleteItem = async (id) => {
     const item = galleryItems.find((item) => item.id === id)
     if (
       confirm(`Are you sure you want to delete "${item.title}" from gallery?`)
     ) {
-      const updatedGallery = galleryItems.filter((item) => item.id !== id)
-      setGalleryItems(updatedGallery)
-      alert('Gallery item deleted successfully!')
+      try {
+        await fetchAPI(`/gallery/${id}`, { method: 'DELETE' })
+        await loadGallery()
+        toast.success('Gallery item deleted successfully!')
+      } catch (error) {
+        toast.error('Failed to delete gallery item: ' + error.message)
+      }
     }
   }
 
-  const toggleItemStatus = (id) => {
-    const updatedGallery = galleryItems.map((item) =>
-      item.id === id
-        ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' }
-        : item,
-    )
-    setGalleryItems(updatedGallery)
+  const toggleItemStatus = async (id) => {
+    const item = galleryItems.find((item) => item.id === id)
+    const newStatus = item.status === 'active' ? 'inactive' : 'active'
+    try {
+      await fetchAPI(`/gallery/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      })
+      await loadGallery()
+    } catch (error) {
+      toast.error('Failed to update status: ' + error.message)
+    }
   }
 
   const filteredItems = galleryItems.filter((item) => {
@@ -262,8 +213,7 @@ export default function GalleryPage() {
     categories: [...new Set(galleryItems.map((i) => i.category))].length,
   }
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -409,13 +359,8 @@ export default function GalleryPage() {
               {filteredItems.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
-                    <div className="relative w-16 h-16 bg-[#EDE5DB] rounded-lg overflow-hidden">
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                      />
+                    <div className="relative w-16 h-16 bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3] rounded-lg overflow-hidden flex items-center justify-center">
+                      <AdminGalleryImage src={item.image} alt={item.title} />
                     </div>
                   </td>
                   <td className="px-6 py-4">

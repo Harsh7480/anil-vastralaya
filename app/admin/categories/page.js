@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
 import {
   Plus,
   Edit,
@@ -14,9 +16,28 @@ import {
   AlertCircle,
 } from 'lucide-react'
 
+function AdminCategoryImage({ src, alt }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || src === '/images/placeholder.png' || hasError) {
+    return <Folder className="w-16 h-16 text-[#98635D]" />
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-contain p-4"
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
 export default function CategoriesPage() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
   const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [formData, setFormData] = useState({
@@ -29,64 +50,22 @@ export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
 
-  // Load categories from localStorage on client side only
   useEffect(() => {
-    setIsClient(true)
-    const savedCategories = localStorage.getItem('categories')
-    if (savedCategories) {
-      const parsed = JSON.parse(savedCategories)
-      setCategories(parsed)
-    } else {
-      // Default categories
-      const defaultCategories = [
-        {
-          id: 'women',
-          name: 'Women',
-          description: 'Elegant sarees, lehengas & more',
-          image: '/images/women.png',
-          status: 'active',
-          productCount: 0,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'ethnic',
-          name: 'Ethnic Wear',
-          description: 'Traditional & festive collections',
-          image: '/images/ethnic.png',
-          status: 'active',
-          productCount: 0,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'kids',
-          name: 'Kids',
-          description: 'Adorable outfits for little ones',
-          image: '/images/kids.png',
-          status: 'active',
-          productCount: 0,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'men',
-          name: "Men's Collection",
-          description: 'Shirts, kurtas, and suits for men',
-          image: '/images/men.png',
-          status: 'active',
-          productCount: 0,
-          createdAt: new Date().toISOString(),
-        },
-      ]
-      setCategories(defaultCategories)
-      localStorage.setItem('categories', JSON.stringify(defaultCategories))
-    }
+    loadCategories()
   }, [])
 
-  // Save categories to localStorage
-  useEffect(() => {
-    if (categories.length > 0 && isClient) {
-      localStorage.setItem('categories', JSON.stringify(categories))
+  const loadCategories = async () => {
+    try {
+      setLoading(true)
+      const data = await fetchAPI('/categories')
+      setCategories(data)
+    } catch (error) {
+      console.error('Failed to load categories:', error)
+      toast.error('Failed to load categories. Please try again.')
+    } finally {
+      setLoading(false)
     }
-  }, [categories, isClient])
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -135,62 +114,60 @@ export default function CategoriesPage() {
     setIsModalOpen(true)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!formData.name || !formData.description) {
-      alert('Please fill all required fields!')
+      toast.warning('Please fill all required fields!')
       return
     }
 
-    const categoryId = formData.name.toLowerCase().replace(/\s+/g, '-')
+    const slug = formData.name.toLowerCase().replace(/\s+/g, '-')
 
-    if (editingCategory) {
-      // Update existing category
-      const updatedCategories = categories.map((cat) =>
-        cat.id === editingCategory.id
-          ? {
-              ...cat,
-              name: formData.name,
-              description: formData.description,
-              image: formData.image,
-              status: formData.status,
-              updatedAt: new Date().toISOString(),
-            }
-          : cat,
-      )
-      setCategories(updatedCategories)
-      alert('Category updated successfully!')
-    } else {
-      // Add new category
-      const newCategory = {
-        id: categoryId,
-        name: formData.name,
-        description: formData.description,
-        image: formData.image || '/images/placeholder.png',
-        status: formData.status,
-        productCount: 0,
-        createdAt: new Date().toISOString(),
+    try {
+      if (editingCategory) {
+        await fetchAPI(`/categories/${editingCategory.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: formData.name,
+            slug,
+            description: formData.description,
+            image: formData.image,
+            status: formData.status,
+          }),
+        })
+        toast.success('Category updated successfully!')
+      } else {
+        await fetchAPI('/categories', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: formData.name,
+            slug,
+            description: formData.description,
+            image: formData.image || '/images/placeholder.png',
+            status: formData.status,
+          }),
+        })
+        toast.success('Category added successfully!')
       }
-      setCategories([...categories, newCategory])
-      alert('Category added successfully!')
-    }
 
-    setIsModalOpen(false)
-    setFormData({
-      name: '',
-      description: '',
-      image: '',
-      status: 'active',
-    })
-    setImagePreview('')
+      await loadCategories()
+      setIsModalOpen(false)
+      setFormData({ name: '', description: '', image: '', status: 'active' })
+      setImagePreview('')
+    } catch (error) {
+      console.error('Failed to save category:', error)
+      toast.error(`Failed to save category: ${error.message}`)
+    }
   }
 
-  const deleteCategory = (id) => {
+  const deleteCategory = async (id) => {
     const category = categories.find((cat) => cat.id === id)
-    if (category.productCount > 0) {
-      alert(
-        `Cannot delete "${category.name}" because it has ${category.productCount} products. Please reassign or delete products first.`,
+    const productCount = category?._count?.products || 0
+
+    if (productCount > 0) {
+      toast.error(
+        `Cannot delete "${category.name}" because it has ${productCount} products. Please reassign or delete products first.`,
       )
       return
     }
@@ -198,19 +175,35 @@ export default function CategoriesPage() {
     if (
       confirm(`Are you sure you want to delete "${category.name}" category?`)
     ) {
-      const updatedCategories = categories.filter((cat) => cat.id !== id)
-      setCategories(updatedCategories)
-      alert('Category deleted successfully!')
+      try {
+        await fetchAPI(`/categories/${id}`, { method: 'DELETE' })
+        setCategories(categories.filter((cat) => cat.id !== id))
+        toast.success('Category deleted successfully!')
+      } catch (error) {
+        console.error('Failed to delete category:', error)
+        toast.error(`Failed to delete category: ${error.message}`)
+      }
     }
   }
 
-  const toggleCategoryStatus = (id) => {
-    const updatedCategories = categories.map((cat) =>
-      cat.id === id
-        ? { ...cat, status: cat.status === 'active' ? 'inactive' : 'active' }
-        : cat,
-    )
-    setCategories(updatedCategories)
+  const toggleCategoryStatus = async (id) => {
+    const category = categories.find((cat) => cat.id === id)
+    const newStatus = category.status === 'active' ? 'inactive' : 'active'
+
+    try {
+      await fetchAPI(`/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      })
+      setCategories(
+        categories.map((cat) =>
+          cat.id === id ? { ...cat, status: newStatus } : cat,
+        ),
+      )
+    } catch (error) {
+      console.error('Failed to toggle category status:', error)
+      toast.error(`Failed to update category: ${error.message}`)
+    }
   }
 
   const filteredCategories = categories.filter((category) => {
@@ -226,11 +219,13 @@ export default function CategoriesPage() {
     total: categories.length,
     active: categories.filter((c) => c.status === 'active').length,
     inactive: categories.filter((c) => c.status === 'inactive').length,
-    totalProducts: categories.reduce((sum, cat) => sum + cat.productCount, 0),
+    totalProducts: categories.reduce(
+      (sum, cat) => sum + (cat._count?.products || 0),
+      0,
+    ),
   }
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -363,13 +358,8 @@ export default function CategoriesPage() {
             key={category.id}
             className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
           >
-            <div className="relative h-48 bg-[#EDE5DB]">
-              <Image
-                src={category.image}
-                alt={category.name}
-                fill
-                className="object-contain p-4"
-              />
+            <div className="relative h-48 bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3] flex items-center justify-center">
+              <AdminCategoryImage src={category.image} alt={category.name} />
               <div
                 className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${
                   category.status === 'active'
@@ -415,7 +405,9 @@ export default function CategoriesPage() {
 
               <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <div className="text-sm text-gray-500">
-                  <span className="font-medium">{category.productCount}</span>{' '}
+                  <span className="font-medium">
+                    {category._count?.products || 0}
+                  </span>{' '}
                   Products
                 </div>
                 <button

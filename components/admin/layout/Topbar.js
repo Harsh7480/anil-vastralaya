@@ -1,6 +1,17 @@
 'use client'
 
+import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
+
 export default function Topbar({ toggleSidebar, sidebarOpen }) {
+  const { logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/admin/login')
+  }
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-6 py-3">
@@ -84,12 +95,12 @@ export default function Topbar({ toggleSidebar, sidebarOpen }) {
                   Change Password
                 </a>
                 <hr className="my-1" />
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                 >
                   Logout
-                </a>
+                </button>
               </div>
             </div>
           </div>

@@ -1,8 +1,9 @@
 import { Poppins } from 'next/font/google'
 import './globals.css'
 import LayoutWrapper from './LayoutWrapper'
+import { AuthProvider } from '@/context/AuthContext'
+import { ToastProvider } from '@/context/ToastContext'
 
-//Use supported font
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -26,7 +27,11 @@ export default function RootLayout({ children }) {
           bg-white
         `}
       >
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <AuthProvider>
+          <ToastProvider>
+            <LayoutWrapper>{children}</LayoutWrapper>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   )

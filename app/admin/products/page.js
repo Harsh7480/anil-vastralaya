@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
+import { fetchAPI } from '@/utils/api';
+import { useToast } from '@/context/ToastContext';
 import { 
   Plus, 
   Edit, 
@@ -19,9 +20,29 @@ import {
   Eye
 } from 'lucide-react';
 
+function AdminProductImage({ src, alt }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src || src === '/images/placeholder.png' || hasError) {
+    return <Package className="w-5 h-5 text-[#98635D]" />;
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export default function ProductsPage() {
-  const [isClient, setIsClient] = useState(false);
+  const toast = useToast();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -39,160 +60,28 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterFeatured, setFilterFeatured] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const categories = [
-    { id: 'women', name: 'Women' },
-    { id: 'ethnic', name: 'Ethnic Wear' },
-    { id: 'men', name: "Men's Collection" },
-    { id: 'kids', name: 'Kids' },
-  ];
-
-  const subcategories = {
-    women: ['sarees', 'kurtas', 'suits', 'lehengas'],
-    ethnic: ['lehengas', 'kurtas', 'sarees'],
-    men: ['kurtas', 'shirts', 'suits'],
-    kids: ['lehengas', 'kurtas', 'dresses'],
-  };
-
   const tags = ['Bestseller', 'New', 'Sale', 'Trending', 'Limited Edition'];
 
-  // Load products from localStorage on client side only
   useEffect(() => {
-    setIsClient(true);
-    const savedProducts = localStorage.getItem("products");
-    if (savedProducts) {
-      const parsed = JSON.parse(savedProducts);
-      setProducts(parsed);
-    } else {
-      // Default products
-      const defaultProducts = [
-        {
-          id: 1,
-          name: 'Silk Banarasi Saree',
-          price: 2999,
-          originalPrice: 4999,
-          image: '/images/product1.png',
-          tag: 'Bestseller',
-          category: 'women',
-          subcategory: 'sarees',
-          stock: 25,
-          status: 'active',
-          featured: true,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          name: 'Bridal Red Lehenga',
-          price: 12999,
-          originalPrice: 18999,
-          image: '/images/product2.png',
-          tag: 'New',
-          category: 'ethnic',
-          subcategory: 'lehengas',
-          stock: 10,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          name: 'Cotton Anarkali Set',
-          price: 1899,
-          originalPrice: 2999,
-          image: '/images/product3.png',
-          tag: 'Sale',
-          category: 'women',
-          subcategory: 'kurtas',
-          stock: 50,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 4,
-          name: 'Designer Sharara Set',
-          price: 4599,
-          originalPrice: 6999,
-          image: '/images/product4.jpg',
-          tag: 'Trending',
-          category: 'ethnic',
-          subcategory: 'kurtas',
-          stock: 15,
-          status: 'active',
-          featured: true,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 5,
-          name: 'Embroidered Suit',
-          price: 3299,
-          originalPrice: 5499,
-          image: '/images/product1.png',
-          tag: 'Bestseller',
-          category: 'women',
-          subcategory: 'suits',
-          stock: 30,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 6,
-          name: 'Georgette Party Saree',
-          price: 2199,
-          originalPrice: 3999,
-          image: '/images/product2.png',
-          tag: 'New',
-          category: 'women',
-          subcategory: 'sarees',
-          stock: 20,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 7,
-          name: "Men's Silk Kurta",
-          price: 1499,
-          originalPrice: 2499,
-          image: '/images/product3.png',
-          tag: 'Bestseller',
-          category: 'men',
-          subcategory: 'kurtas',
-          stock: 40,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 8,
-          name: 'Kids Lehenga Set',
-          price: 999,
-          originalPrice: 1599,
-          image: '/images/product4.jpg',
-          tag: 'New',
-          category: 'kids',
-          subcategory: 'lehengas',
-          stock: 35,
-          status: 'active',
-          featured: false,
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      setProducts(defaultProducts);
-      localStorage.setItem("products", JSON.stringify(defaultProducts));
-    }
+    const loadData = async () => {
+      try {
+        const [productsData, categoriesData] = await Promise.all([
+          fetchAPI('/products'),
+          fetchAPI('/categories'),
+        ]);
+        setProducts(Array.isArray(productsData) ? productsData : productsData.data || []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.data || []);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
-
-  // Save products to localStorage
-  useEffect(() => {
-    if (products.length > 0 && isClient) {
-      localStorage.setItem("products", JSON.stringify(products));
-    }
-  }, [products, isClient]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -200,11 +89,6 @@ export default function ProductsPage() {
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     });
-    
-    if (name === 'category') {
-      setSelectedCategory(value);
-      setFormData(prev => ({ ...prev, subcategory: '' }));
-    }
   };
 
   const handleImageChange = (e) => {
@@ -237,81 +121,71 @@ export default function ProductsPage() {
       image: '',
     });
     setImagePreview('');
-    setSelectedCategory('');
     setIsModalOpen(true);
   };
 
   const openEditModal = (product) => {
     setEditingProduct(product);
+    const catId = product.category?.id || product.categoryId || product.category || '';
     setFormData({
       name: product.name,
       price: product.price.toString(),
-      originalPrice: product.originalPrice.toString(),
-      category: product.category,
-      subcategory: product.subcategory,
+      originalPrice: (product.originalPrice || 0).toString(),
+      category: catId,
+      subcategory: product.subcategory || '',
       tag: product.tag || '',
-      stock: product.stock.toString(),
-      status: product.status,
-      featured: product.featured || false,
-      image: product.image,
+      stock: product.inStock ? '10' : '0',
+      status: 'active',
+      featured: false,
+      image: product.image || '',
     });
-    setImagePreview(product.image);
-    setSelectedCategory(product.category);
+    setImagePreview(product.image || '');
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.price || !formData.category || !formData.subcategory) {
-      alert("Please fill all required fields!");
+    if (!formData.name || !formData.price || !formData.category) {
+      toast.warning("Please fill all required fields!");
       return;
     }
 
-    if (editingProduct) {
-      // Update existing product
-      const updatedProducts = products.map(product => 
-        product.id === editingProduct.id 
-          ? { 
-              ...product, 
-              name: formData.name,
-              price: parseFloat(formData.price),
-              originalPrice: parseFloat(formData.originalPrice),
-              category: formData.category,
-              subcategory: formData.subcategory,
-              tag: formData.tag,
-              stock: parseInt(formData.stock),
-              status: formData.status,
-              featured: formData.featured,
-              image: formData.image || product.image,
-              updatedAt: new Date().toISOString()
-            }
-          : product
-      );
-      setProducts(updatedProducts);
-      alert("Product updated successfully!");
-    } else {
-      // Add new product
-      const newProduct = {
-        id: Date.now(),
-        name: formData.name,
-        price: parseFloat(formData.price),
-        originalPrice: parseFloat(formData.originalPrice),
-        image: formData.image || '/images/placeholder.png',
-        tag: formData.tag,
-        category: formData.category,
-        subcategory: formData.subcategory,
-        stock: parseInt(formData.stock),
-        status: formData.status,
-        featured: formData.featured,
-        createdAt: new Date().toISOString(),
-      };
-      setProducts([...products, newProduct]);
-      alert("Product added successfully!");
+    const slug = formData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const payload = {
+      name: formData.name,
+      slug,
+      price: parseFloat(formData.price),
+      originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
+      image: formData.image || '/images/placeholder.png',
+      tag: formData.tag || null,
+      subcategory: formData.subcategory || null,
+      inStock: parseInt(formData.stock || '0') > 0,
+      categoryId: formData.category,
+    };
+
+    try {
+      if (editingProduct) {
+        await fetchAPI(`/products/${editingProduct.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        toast.success("Product updated successfully!");
+      } else {
+        await fetchAPI('/products', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        toast.success("Product added successfully!");
+      }
+
+      const productsData = await fetchAPI('/products');
+      setProducts(Array.isArray(productsData) ? productsData : productsData.data || []);
+      setIsModalOpen(false);
+      resetForm();
+    } catch (err) {
+      toast.error("Error saving product: " + err.message);
     }
-    
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const resetForm = () => {
@@ -330,51 +204,44 @@ export default function ProductsPage() {
     setImagePreview('');
   };
 
-  const deleteProduct = (id) => {
+  const deleteProduct = async (id) => {
     const product = products.find(p => p.id === id);
     if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
-      const updatedProducts = products.filter(product => product.id !== id);
-      setProducts(updatedProducts);
-      alert("Product deleted successfully!");
+      try {
+        await fetchAPI(`/products/${id}`, { method: 'DELETE' });
+        setProducts(products.filter(p => p.id !== id));
+        toast.success("Product deleted successfully!");
+      } catch (err) {
+        toast.error("Error deleting product: " + err.message);
+      }
     }
   };
 
-  const toggleProductStatus = (id) => {
-    const updatedProducts = products.map(product =>
-      product.id === id
-        ? { ...product, status: product.status === 'active' ? 'inactive' : 'active' }
-        : product
-    );
-    setProducts(updatedProducts);
+  const getCategoryName = (product) => {
+    if (product.category?.name) return product.category.name;
+    const cat = categories.find(c => c.id === (product.categoryId || product.category));
+    return cat ? cat.name : product.categoryId || product.category || 'N/A';
   };
 
-  const toggleFeatured = (id) => {
-    const updatedProducts = products.map(product =>
-      product.id === id
-        ? { ...product, featured: !product.featured }
-        : product
-    );
-    setProducts(updatedProducts);
-    const product = products.find(p => p.id === id);
-    alert(product.featured ? "Product removed from featured!" : "Product added to featured!");
+  const getCategoryId = (product) => {
+    if (product.category?.id) return product.category.id;
+    return product.categoryId || product.category || '';
   };
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
-    const matchesStatus = filterStatus === 'all' || product.status === filterStatus;
-    const matchesFeatured = filterFeatured === 'all' || 
-      (filterFeatured === 'featured' && product.featured) ||
-      (filterFeatured === 'non-featured' && !product.featured);
+    const matchesCategory = filterCategory === 'all' || getCategoryId(product) === filterCategory;
+    const matchesStatus = filterStatus === 'all';
+    const matchesFeatured = filterFeatured === 'all';
     return matchesSearch && matchesCategory && matchesStatus && matchesFeatured;
   });
 
   const stats = {
     total: products.length,
-    active: products.filter(p => p.status === 'active').length,
-    inactive: products.filter(p => p.status === 'inactive').length,
-    lowStock: products.filter(p => p.stock < 20).length,
-    featured: products.filter(p => p.featured).length,
+    active: products.length,
+    inactive: 0,
+    lowStock: products.filter(p => !p.inStock).length,
+    featured: 0,
     totalValue: products.reduce((sum, p) => sum + p.price, 0),
   };
 
@@ -389,8 +256,7 @@ export default function ProductsPage() {
     return colors[tag] || 'bg-gray-100 text-gray-700';
   };
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-center items-center h-64">
@@ -449,7 +315,7 @@ export default function ProductsPage() {
         <div className="bg-white rounded-xl shadow-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-xs">Low Stock</p>
+              <p className="text-gray-500 text-xs">Out of Stock</p>
               <p className="text-2xl font-bold text-red-600">{stats.lowStock}</p>
             </div>
             <AlertCircle className="w-8 h-8 text-red-500" />
@@ -538,7 +404,6 @@ export default function ProductsPage() {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Price</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Stock</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Tag</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Featured</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Status</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Actions</th>
               </tr>
@@ -548,32 +413,29 @@ export default function ProductsPage() {
                 <tr key={product.id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
-                      <div className="relative w-12 h-12 bg-[#EDE5DB] rounded-lg overflow-hidden">
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                        />
+                      <div className="relative w-12 h-12 bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3] rounded-lg overflow-hidden flex items-center justify-center">
+                        <AdminProductImage src={product.image} alt={product.name} />
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">{product.name}</p>
-                        <p className="text-xs text-gray-500 capitalize">{product.subcategory}</p>
+                        <p className="text-xs text-gray-500">{product.subcategory || ''}</p>
                       </div>
                     </div>
                    </td>
                   <td className="px-6 py-4">
-                    <span className="capitalize text-gray-600">{product.category}</span>
+                    <span className="capitalize text-gray-600">{getCategoryName(product)}</span>
                    </td>
                   <td className="px-6 py-4">
                     <div>
                       <p className="font-semibold text-gray-800">₹{product.price.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</p>
+                      {product.originalPrice && (
+                        <p className="text-xs text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</p>
+                      )}
                     </div>
                    </td>
                   <td className="px-6 py-4">
-                    <span className={`font-medium ${product.stock < 20 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {product.stock} units
+                    <span className={`font-medium ${!product.inStock ? 'text-red-600' : 'text-green-600'}`}>
+                      {product.inStock ? 'In Stock' : 'Out of Stock'}
                     </span>
                    </td>
                   <td className="px-6 py-4">
@@ -584,29 +446,13 @@ export default function ProductsPage() {
                     )}
                    </td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleFeatured(product.id)}
-                      className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm font-medium transition ${
-                        product.featured
-                          ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Star className={`w-4 h-4 ${product.featured ? 'fill-current' : ''}`} />
-                      <span>{product.featured ? 'Featured' : 'Add to Featured'}</span>
-                    </button>
-                   </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleProductStatus(product.id)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                        product.status === 'active'
-                          ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                          : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      }`}
-                    >
-                      {product.status === 'active' ? 'Active' : 'Inactive'}
-                    </button>
+                    <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                      product.inStock
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {product.inStock ? 'Active' : 'Inactive'}
+                    </span>
                    </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
@@ -738,21 +584,16 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subcategory *
+                    Subcategory
                   </label>
-                  <select
+                  <input
+                    type="text"
                     name="subcategory"
                     value={formData.subcategory}
                     onChange={handleInputChange}
-                    required
-                    disabled={!formData.category}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 bg-white disabled:bg-gray-100 disabled:text-gray-500"
-                  >
-                    <option value="">Select Subcategory</option>
-                    {formData.category && subcategories[formData.category]?.map(sub => (
-                      <option key={sub} value={sub}>{sub.charAt(0).toUpperCase() + sub.slice(1)}</option>
-                    ))}
-                  </select>
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 placeholder-gray-400 bg-white"
+                    placeholder="e.g., Sarees, Kurtas, Lehengas"
+                  />
                 </div>
               </div>
 
@@ -787,36 +628,6 @@ export default function ProductsPage() {
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 placeholder-gray-400 bg-white"
                     placeholder="25"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 bg-white"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="flex items-center space-x-3 mt-8 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="featured"
-                      checked={formData.featured}
-                      onChange={handleInputChange}
-                      className="w-5 h-5 text-black focus:ring-black rounded border-gray-300"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Mark as Featured Product</span>
-                    <Star className="w-4 h-4 text-yellow-500" />
-                  </label>
                 </div>
               </div>
 

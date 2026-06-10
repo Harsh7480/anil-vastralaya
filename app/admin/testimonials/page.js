@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
 import {
   Plus,
   Edit,
@@ -18,8 +20,9 @@ import {
 } from 'lucide-react'
 
 export default function TestimonialsPage() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
   const [testimonials, setTestimonials] = useState([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTestimonial, setEditingTestimonial] = useState(null)
   const [formData, setFormData] = useState({
@@ -32,55 +35,22 @@ export default function TestimonialsPage() {
   const [filterRating, setFilterRating] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
 
-  // Load testimonials from localStorage on client side only
   useEffect(() => {
-    setIsClient(true)
-    const savedTestimonials = localStorage.getItem('testimonials')
-    if (savedTestimonials) {
-      const parsed = JSON.parse(savedTestimonials)
-      setTestimonials(parsed)
-    } else {
-      // Default testimonials
-      const defaultTestimonials = [
-        {
-          id: 1,
-          name: 'Aarav Sharma',
-          review:
-            'Amazing quality clothes! The fabric feels premium and the fit is perfect.',
-          rating: 5,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          name: 'Priya Verma',
-          review:
-            'Loved the collection! Stylish designs and great pricing. Highly recommended.',
-          rating: 4,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          name: 'Rohit Singh',
-          review:
-            'Fast delivery and the outfit looks exactly like the pictures. Great experience!',
-          rating: 5,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-      ]
-      setTestimonials(defaultTestimonials)
-      localStorage.setItem('testimonials', JSON.stringify(defaultTestimonials))
-    }
+    fetchTestimonials()
   }, [])
 
-  // Save testimonials to localStorage
-  useEffect(() => {
-    if (testimonials.length > 0 && isClient) {
-      localStorage.setItem('testimonials', JSON.stringify(testimonials))
+  const fetchTestimonials = async () => {
+    try {
+      setLoading(true)
+      const data = await fetchAPI('/testimonials')
+      setTestimonials(data.testimonials || data)
+    } catch (error) {
+      console.error('Failed to fetch testimonials:', error)
+      toast.error('Failed to load testimonials.')
+    } finally {
+      setLoading(false)
     }
-  }, [testimonials, isClient])
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -112,79 +82,100 @@ export default function TestimonialsPage() {
     setIsModalOpen(true)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!formData.name || !formData.review || !formData.rating) {
-      alert('Please fill all required fields!')
+      toast.warning('Please fill all required fields!')
       return
     }
 
     const ratingNum = parseInt(formData.rating)
     if (ratingNum < 1 || ratingNum > 5) {
-      alert('Rating must be between 1 and 5!')
+      toast.warning('Rating must be between 1 and 5!')
       return
     }
 
-    if (editingTestimonial) {
-      // Update existing testimonial
-      const updatedTestimonials = testimonials.map((item) =>
-        item.id === editingTestimonial.id
-          ? {
-              ...item,
-              name: formData.name,
-              review: formData.review,
-              rating: ratingNum,
-              status: formData.status,
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
-      )
-      setTestimonials(updatedTestimonials)
-      alert('Testimonial updated successfully!')
-    } else {
-      // Add new testimonial
-      const newTestimonial = {
-        id: Date.now(),
-        name: formData.name,
-        review: formData.review,
-        rating: ratingNum,
-        status: formData.status,
-        createdAt: new Date().toISOString(),
-      }
-      setTestimonials([newTestimonial, ...testimonials])
-      alert('Testimonial added successfully!')
+    const payload = {
+      name: formData.name,
+      review: formData.review,
+      rating: ratingNum,
+      status: formData.status,
     }
 
-    setIsModalOpen(false)
-    setFormData({
-      name: '',
-      review: '',
-      rating: '',
-      status: 'active',
-    })
+    try {
+      if (editingTestimonial) {
+        const updated = await fetchAPI(`/testimonials/${editingTestimonial.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        })
+        setTestimonials((prev) =>
+          prev.map((item) =>
+            item.id === editingTestimonial.id
+              ? { ...item, ...updated.testimonial || updated }
+              : item,
+          ),
+        )
+        toast.success('Testimonial updated successfully!')
+      } else {
+        const created = await fetchAPI('/testimonials', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
+        const newTestimonial = created.testimonial || created
+        setTestimonials((prev) => [newTestimonial, ...prev])
+        toast.success('Testimonial added successfully!')
+      }
+
+      setIsModalOpen(false)
+      setFormData({
+        name: '',
+        review: '',
+        rating: '',
+        status: 'active',
+      })
+    } catch (error) {
+      console.error('Failed to save testimonial:', error)
+      toast.error(error.message || 'Failed to save testimonial.')
+    }
   }
 
-  const deleteTestimonial = (id) => {
+  const deleteTestimonial = async (id) => {
     const testimonial = testimonials.find((item) => item.id === id)
     if (
       confirm(
         `Are you sure you want to delete "${testimonial.name}"'s testimonial?`,
       )
     ) {
-      const updatedTestimonials = testimonials.filter((item) => item.id !== id)
-      setTestimonials(updatedTestimonials)
-      alert('Testimonial deleted successfully!')
+      try {
+        await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
+        setTestimonials((prev) => prev.filter((item) => item.id !== id))
+        toast.success('Testimonial deleted successfully!')
+      } catch (error) {
+        console.error('Failed to delete testimonial:', error)
+        toast.error(error.message || 'Failed to delete testimonial.')
+      }
     }
   }
 
-  const toggleTestimonialStatus = (id) => {
-    const updatedTestimonials = testimonials.map((item) =>
-      item.id === id
-        ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' }
-        : item,
-    )
-    setTestimonials(updatedTestimonials)
+  const toggleTestimonialStatus = async (id) => {
+    const testimonial = testimonials.find((item) => item.id === id)
+    const newStatus = testimonial.status === 'active' ? 'inactive' : 'active'
+
+    try {
+      await fetchAPI(`/testimonials/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      })
+      setTestimonials((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: newStatus } : item,
+        ),
+      )
+    } catch (error) {
+      console.error('Failed to toggle status:', error)
+      toast.error(error.message || 'Failed to update status.')
+    }
   }
 
   const filteredTestimonials = testimonials.filter((item) => {
@@ -211,8 +202,7 @@ export default function TestimonialsPage() {
     fiveStar: testimonials.filter((i) => i.rating === 5).length,
   }
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -528,7 +518,7 @@ export default function TestimonialsPage() {
                     min="1"
                     max="5"
                     step="1"
-                    className="w-24 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
+                    className="w-24 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 placeholder-gray-500"
                     placeholder="5"
                   />
                   <div className="flex space-x-1">

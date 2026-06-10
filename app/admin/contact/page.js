@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
 import {
   Mail,
   Eye,
@@ -20,13 +22,14 @@ import {
 } from 'lucide-react'
 
 export default function ContactSubmissionsPage() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
   const [submissions, setSubmissions] = useState([])
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterSubject, setFilterSubject] = useState('all')
+  const [loading, setLoading] = useState(true)
 
   const subjects = [
     'General Inquiry',
@@ -36,134 +39,77 @@ export default function ContactSubmissionsPage() {
     'Feedback',
   ]
 
-  // Load submissions from localStorage on client side only
-  useEffect(() => {
-    setIsClient(true)
-    const savedSubmissions = localStorage.getItem('contactSubmissions')
-    if (savedSubmissions) {
-      const parsed = JSON.parse(savedSubmissions)
-      setSubmissions(parsed)
-    } else {
-      // Default sample submissions
-      const defaultSubmissions = [
-        {
-          id: 1,
-          firstName: 'Aarav',
-          lastName: 'Sharma',
-          email: 'aarav.sharma@example.com',
-          phone: '+91 98765 43210',
-          subject: 'General Inquiry',
-          message:
-            'I am interested in your latest wedding collection. Could you please share more details about the bridal lehengas?',
-          status: 'read',
-          createdAt: new Date(
-            Date.now() - 2 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-        {
-          id: 2,
-          firstName: 'Priya',
-          lastName: 'Verma',
-          email: 'priya.verma@example.com',
-          phone: '+91 87654 32109',
-          subject: 'Order Related',
-          message:
-            "I placed order #AV1234 and haven't received tracking details yet. Please update me on the status.",
-          status: 'unread',
-          createdAt: new Date(
-            Date.now() - 1 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-        {
-          id: 3,
-          firstName: 'Rohit',
-          lastName: 'Singh',
-          email: 'rohit.singh@example.com',
-          phone: '+91 76543 21098',
-          subject: 'Returns & Exchanges',
-          message:
-            'I received a damaged product. How do I initiate a return? The saree has a small tear on the border.',
-          status: 'replied',
-          createdAt: new Date(
-            Date.now() - 5 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-        {
-          id: 4,
-          firstName: 'Neha',
-          lastName: 'Gupta',
-          email: 'neha.gupta@example.com',
-          phone: '+91 65432 10987',
-          subject: 'Styling Advice',
-          message:
-            'What accessories would go well with your navy blue banarasi saree? Need suggestions for a wedding function.',
-          status: 'unread',
-          createdAt: new Date(
-            Date.now() - 3 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-        {
-          id: 5,
-          firstName: 'Amit',
-          lastName: 'Patel',
-          email: 'amit.patel@example.com',
-          phone: '+91 54321 09876',
-          subject: 'Feedback',
-          message:
-            'Great collection and fast delivery! Really loved the quality of the kurta. Will definitely shop again.',
-          status: 'read',
-          createdAt: new Date(
-            Date.now() - 7 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-      ]
-      setSubmissions(defaultSubmissions)
-      localStorage.setItem(
-        'contactSubmissions',
-        JSON.stringify(defaultSubmissions),
-      )
+  const loadSubmissions = async () => {
+    setLoading(true)
+    try {
+      const data = await fetchAPI('/contact')
+      const list = (data.submissions || data || []).map((sub) => ({
+        ...sub,
+        status: sub.read ? 'read' : 'unread',
+      }))
+      setSubmissions(list)
+    } catch (error) {
+      console.error('Failed to load submissions:', error)
+      toast.error('Failed to load contact submissions.')
+    } finally {
+      setLoading(false)
     }
-  }, [])
-
-  // Save submissions to localStorage
-  useEffect(() => {
-    if (submissions.length > 0 && isClient) {
-      localStorage.setItem('contactSubmissions', JSON.stringify(submissions))
-    }
-  }, [submissions, isClient])
-
-  const updateSubmissionStatus = (id, status) => {
-    const updatedSubmissions = submissions.map((sub) =>
-      sub.id === id
-        ? { ...sub, status, updatedAt: new Date().toISOString() }
-        : sub,
-    )
-    setSubmissions(updatedSubmissions)
-    alert(`Message marked as ${status}!`)
   }
 
-  const deleteSubmission = (id) => {
+  useEffect(() => {
+    loadSubmissions()
+  }, [])
+
+  const updateSubmissionStatus = async (id, status) => {
+    try {
+      const read = status !== 'unread'
+      await fetchAPI(`/contact/${id}/read`, { method: 'PUT', body: JSON.stringify({ read }) })
+      setSubmissions((prev) =>
+        prev.map((sub) =>
+          sub.id === id ? { ...sub, status, updatedAt: new Date().toISOString() } : sub,
+        ),
+      )
+      toast.success(`Message marked as ${status}!`)
+    } catch (error) {
+      console.error('Failed to update status:', error)
+      toast.error('Failed to update message status.')
+    }
+  }
+
+  const deleteSubmission = async (id) => {
     const submission = submissions.find((sub) => sub.id === id)
     if (
       confirm(
         `Are you sure you want to delete message from ${submission.firstName} ${submission.lastName}?`,
       )
     ) {
-      const updatedSubmissions = submissions.filter((sub) => sub.id !== id)
-      setSubmissions(updatedSubmissions)
-      alert('Message deleted successfully!')
+      try {
+        await fetchAPI(`/contact/${id}`, { method: 'DELETE' })
+        setSubmissions((prev) => prev.filter((sub) => sub.id !== id))
+        toast.success('Message deleted successfully!')
+      } catch (error) {
+        console.error('Failed to delete submission:', error)
+        toast.error('Failed to delete message.')
+      }
     }
   }
 
-  const deleteAllSubmissions = () => {
+  const deleteAllSubmissions = async () => {
     if (
       confirm(
         'Are you sure you want to delete ALL messages? This action cannot be undone!',
       )
     ) {
-      setSubmissions([])
-      localStorage.removeItem('contactSubmissions')
-      alert('All messages deleted!')
+      try {
+        for (const sub of submissions) {
+          await fetchAPI(`/contact/${sub.id}`, { method: 'DELETE' })
+        }
+        setSubmissions([])
+        toast.success('All messages deleted!')
+      } catch (error) {
+        console.error('Failed to delete all submissions:', error)
+        toast.error('Failed to delete all messages.')
+      }
     }
   }
 
@@ -204,19 +150,17 @@ export default function ContactSubmissionsPage() {
     }.csv`
     a.click()
     URL.revokeObjectURL(url)
-    alert('Export successful!')
+    toast.success('Export successful!')
   }
 
   const getStatusBadge = (status) => {
     const badges = {
       unread: 'bg-red-100 text-red-600',
       read: 'bg-blue-100 text-blue-600',
-      replied: 'bg-green-100 text-green-600',
     }
     const labels = {
       unread: 'Unread',
       read: 'Read',
-      replied: 'Replied',
     }
     return {
       className: badges[status] || 'bg-gray-100 text-gray-600',
@@ -240,11 +184,9 @@ export default function ContactSubmissionsPage() {
     total: submissions.length,
     unread: submissions.filter((s) => s.status === 'unread').length,
     read: submissions.filter((s) => s.status === 'read').length,
-    replied: submissions.filter((s) => s.status === 'replied').length,
   }
 
-  // Don't render until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
@@ -266,6 +208,13 @@ export default function ContactSubmissionsPage() {
         </div>
         <div className="flex gap-3">
           <button
+            onClick={loadSubmissions}
+            className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+          >
+            <RefreshCw className="w-5 h-5" />
+            <span>Refresh</span>
+          </button>
+          <button
             onClick={exportSubmissions}
             className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition flex items-center space-x-2"
           >
@@ -284,7 +233,7 @@ export default function ContactSubmissionsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
@@ -318,19 +267,6 @@ export default function ContactSubmissionsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Replied</p>
-              <p className="text-3xl font-bold text-green-600">
-                {stats.replied}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Filters and Search */}
@@ -357,7 +293,6 @@ export default function ContactSubmissionsPage() {
               <option value="all">All Status</option>
               <option value="unread">Unread</option>
               <option value="read">Read</option>
-              <option value="replied">Replied</option>
             </select>
           </div>
           <div>
@@ -465,15 +400,15 @@ export default function ContactSubmissionsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex space-x-2">
-                        {submission.status !== 'replied' && (
+                        {submission.status === 'unread' && (
                           <button
                             onClick={() =>
-                              updateSubmissionStatus(submission.id, 'replied')
+                              updateSubmissionStatus(submission.id, 'read')
                             }
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
-                            title="Mark as Replied"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            title="Mark as Read"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <Eye className="w-4 h-4" />
                           </button>
                         )}
                         <button
@@ -604,16 +539,16 @@ export default function ContactSubmissionsPage() {
                     <Mail className="w-4 h-4" />
                     <span>Reply via Email</span>
                   </a>
-                  {selectedSubmission.status !== 'replied' && (
+                  {selectedSubmission.status === 'unread' && (
                     <button
                       onClick={() => {
-                        updateSubmissionStatus(selectedSubmission.id, 'replied')
+                        updateSubmissionStatus(selectedSubmission.id, 'read')
                         setIsViewModalOpen(false)
                       }}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Mark as Replied</span>
+                      <Eye className="w-4 h-4" />
+                      <span>Mark as Read</span>
                     </button>
                   )}
                   <button

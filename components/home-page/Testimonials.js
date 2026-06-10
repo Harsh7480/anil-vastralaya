@@ -1,28 +1,51 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { fetchAPI } from '@/utils/api'
+
 export default function Testimonials() {
-  const testimonials = [
-    {
-      name: 'Aarav Sharma',
-      review:
-        'Amazing quality clothes! The fabric feels premium and the fit is perfect.',
-      rating: 5,
-    },
-    {
-      name: 'Priya Verma',
-      review:
-        'Loved the collection! Stylish designs and great pricing. Highly recommended.',
-      rating: 4,
-    },
-    {
-      name: 'Rohit Singh',
-      review:
-        'Fast delivery and the outfit looks exactly like the pictures. Great experience!',
-      rating: 5,
-    },
-  ]
+  const [testimonials, setTestimonials] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadTestimonials = async () => {
+      try {
+        const data = await fetchAPI('/testimonials')
+        const allTestimonials = Array.isArray(data) ? data : data.testimonials || data.data || []
+        const activeTestimonials = allTestimonials.filter(t => t.status === 'active')
+        setTestimonials(activeTestimonials)
+      } catch (err) {
+        console.error('Failed to load testimonials:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadTestimonials()
+  }, [])
 
   const showDesktopGrid = testimonials.length <= 3
+
+  if (loading) {
+    return (
+      <section className="relative py-24">
+        <div className="absolute inset-0 bg-[url('/images/floral-bg.png')] bg-cover bg-center z-[-20]" />
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-sm z-10" />
+        <div className="relative z-20 max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-sm tracking-[4px] text-gray-500 mb-2">TESTIMONIALS</p>
+            <h2 className="text-4xl font-semibold text-gray-900">What Our Customers Say</h2>
+          </div>
+          <div className="flex justify-center items-center h-48">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#98635D]"></div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (testimonials.length === 0) {
+    return null
+  }
 
   return (
     <section className="relative py-24">
@@ -49,10 +72,10 @@ export default function Testimonials() {
           <div className="hidden md:grid md:grid-cols-3 sm:grid-cols-2 gap-10">
             {testimonials.map((item, index) => (
               <div
-                key={index}
+                key={item.id || index}
                 className="bg-[#98635D]/90 backdrop-blur-md border border-white/30 rounded-2xl p-8 text-center shadow-lg hover:shadow-2xl hover:-translate-y-2 transition duration-500"
               >
-                <div className="text-4xl text-white/30 mb-3">“</div>
+                <div className="text-4xl text-white/30 mb-3">&ldquo;</div>
                 <p className="text-gray-100 text-sm leading-relaxed mb-6">
                   {item.review}
                 </p>
@@ -78,10 +101,10 @@ export default function Testimonials() {
         >
           {testimonials.map((item, index) => (
             <div
-              key={index}
+              key={item.id || index}
               className="min-w-[85%] sm:min-w-[45%] md:min-w-[30%] snap-start bg-[#98635D]/90 backdrop-blur-md border border-white/30 rounded-2xl p-8 text-center shadow-lg hover:shadow-2xl hover:-translate-y-2 transition duration-500"
             >
-              <div className="text-4xl text-white/30 mb-3">“</div>
+              <div className="text-4xl text-white/30 mb-3">&ldquo;</div>
               <p className="text-gray-100 text-sm leading-relaxed mb-6">
                 {item.review}
               </p>

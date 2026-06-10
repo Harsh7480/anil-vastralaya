@@ -1,4 +1,6 @@
-import React from 'react';
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import { 
   FaFacebookF, 
   FaInstagram, 
@@ -6,9 +8,31 @@ import {
   FaMapMarkerAlt, 
   FaPhoneAlt, 
   FaEnvelope 
-} from 'react-icons/fa';
+} from 'react-icons/fa'
+import { fetchAPI } from '@/utils/api'
 
 export default function Footer() {
+  const [settings, setSettings] = useState(null)
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await fetchAPI('/settings/public')
+        setSettings(data)
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  const storeName = settings?.storeName || 'Anil Vastralaya'
+  const storeDescription = settings?.storeDescription || 'Premium ethnic wear & modern fashion for every occasion. Quality you trust, style you love.'
+  const storeAddress = settings?.storeAddress || 'Main Market, Chandni Chowk, Delhi - 110006'
+  const storePhone = settings?.storePhone || '+91 98765 43210'
+  const storeEmail = settings?.storeEmail || 'contact@anilvastralaya.com'
+  const socialMedia = settings?.socialMedia || {}
+
   return (
     <footer className="bg-[#FFF8E7] text-gray-700">
       {/* Main footer content */}
@@ -21,27 +45,32 @@ export default function Footer() {
               {/* Logo – no text beside it */}
               <img 
                 src="/images/Anil Vastralaya.png" 
-                alt="Anil Vastralaya Logo" 
+                alt={`${storeName} Logo`} 
                 className="h-30 w-auto object-contain"
               />
             </div>
             
             <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-              Premium ethnic wear & modern fashion for every occasion. 
-              Quality you trust, style you love.
+              {storeDescription}
             </p>
 
             {/* Social Icons */}
             <div className="flex gap-5">
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                <FaFacebookF size={20} />
-              </a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                <FaInstagram size={20} />
-              </a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
-                <FaWhatsapp size={20} />
-              </a>
+              {socialMedia.facebook && (
+                <a href={socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  <FaFacebookF size={20} />
+                </a>
+              )}
+              {socialMedia.instagram && (
+                <a href={socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  <FaInstagram size={20} />
+                </a>
+              )}
+              {socialMedia.whatsapp && (
+                <a href={`https://wa.me/${socialMedia.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  <FaWhatsapp size={20} />
+                </a>
+              )}
             </div>
           </div>
 
@@ -49,11 +78,11 @@ export default function Footer() {
           <div>
             <h3 className="text-gray-900 font-semibold text-lg mb-6">Shop</h3>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="hover:text-gray-900 transition-colors">New Arrivals</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Sarees</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Lehengas</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Kurtas & Sets</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Men's Collection</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">New Arrivals</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">Sarees</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">Lehengas</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">Kurtas & Sets</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">Men&apos;s Collection</a></li>
             </ul>
           </div>
 
@@ -61,9 +90,9 @@ export default function Footer() {
           <div>
             <h3 className="text-gray-900 font-semibold text-lg mb-6">Company</h3>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="hover:text-gray-900 transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Contact Us</a></li>
-              <li><a href="#" className="hover:text-gray-900 transition-colors">Store Locator</a></li>
+              <li><a href="/about" className="hover:text-gray-900 transition-colors">About Us</a></li>
+              <li><a href="/contact" className="hover:text-gray-900 transition-colors">Contact Us</a></li>
+              <li><a href="/shop" className="hover:text-gray-900 transition-colors">Store Locator</a></li>
               <li><a href="#" className="hover:text-gray-900 transition-colors">Privacy Policy</a></li>
               <li><a href="#" className="hover:text-gray-900 transition-colors">Terms & Conditions</a></li>
             </ul>
@@ -75,15 +104,15 @@ export default function Footer() {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <FaMapMarkerAlt className="text-xl text-gray-600 mt-1" />
-                <span>Main Market, Chandni Chowk<br />Delhi - 110006</span>
+                <span className="whitespace-pre-line">{storeAddress}</span>
               </li>
               <li className="flex items-center gap-3">
                 <FaPhoneAlt className="text-lg text-gray-600" />
-                <span>+91 98765 43210</span>
+                <span>{storePhone}</span>
               </li>
               <li className="flex items-center gap-3">
                 <FaEnvelope className="text-lg text-gray-600" />
-                <span>contact@anilvastralaya.com</span>
+                <span>{storeEmail}</span>
               </li>
             </ul>
           </div>
@@ -94,9 +123,9 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-gray-200 bg-[#FDFBF7]">
         <div className="max-w-7xl mx-auto px-6 py-6 text-center text-sm text-gray-600">
-          © {new Date().getFullYear()} Anil Vastralaya. All rights reserved.
+          © {new Date().getFullYear()} {storeName}. All rights reserved.
         </div>
       </div>
     </footer>
-  );
+  )
 }

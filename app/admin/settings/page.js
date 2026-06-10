@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Save,
   Store,
@@ -8,15 +8,11 @@ import {
   Truck,
   Shield,
   Mail,
-  CreditCard,
   Globe,
   Bell,
   Palette,
   Lock,
-  Users,
   Share2,
-  MapPin,
-  Phone,
   Clock,
   Facebook,
   Instagram,
@@ -24,20 +20,40 @@ import {
   Youtube,
   MessageCircle,
   Tag,
-  Percent,
+  RefreshCw,
+  Settings,
+  CreditCard,
   Package,
-  Award,
   Eye,
-  EyeOff,
-  RefreshCw
+  ChevronRight
 } from 'lucide-react'
+import { fetchAPI } from '@/utils/api'
+import { useToast } from '@/context/ToastContext'
+
+const Toggle = React.memo(({ checked, onChange }) => (
+  <label className="relative inline-flex items-center cursor-pointer">
+    <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
+    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+  </label>
+))
+
+const InputField = React.memo(({ label, children, required }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {children}
+  </div>
+))
+
+const inputClass = "w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-black focus:border-transparent outline-none text-gray-900 bg-white"
 
 export default function SettingsPage() {
-  const [isClient, setIsClient] = useState(false)
+  const toast = useToast()
+  const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('general')
   const [isSaving, setIsSaving] = useState(false)
   const [settings, setSettings] = useState({
-    // General Settings
     storeName: 'Anil Vastralaya',
     storeTagline: 'One of the best clothing store',
     storeEmail: 'contact@anilvastralaya.com',
@@ -45,30 +61,22 @@ export default function SettingsPage() {
     storePhone2: '+91 11 2345 6789',
     storeAddress: 'Main Market, Chandni Chowk, Delhi - 110006, India',
     storeDescription: 'Anil Vastralaya offers premium quality ethnic and contemporary fashion for the whole family.',
-    
-    // Business Hours
     businessHours: {
       monday_friday: '10:00 AM - 9:00 PM',
       saturday: '10:00 AM - 9:00 PM',
       sunday: '11:00 AM - 8:00 PM'
     },
-    
-    // Payment & Tax Settings
     currency: 'INR',
     currencySymbol: '₹',
     taxPercentage: '18',
     taxName: 'GST',
     enableTax: true,
-    
-    // Shipping Settings
     shippingCharges: '50',
     freeShippingAbove: '999',
     deliveryTimeMin: '3',
     deliveryTimeMax: '7',
-    returnPolicy: '30 days return policy with original condition and tags intact. Customers can return items within 30 days of delivery.',
+    returnPolicy: '30 days return policy with original condition and tags intact.',
     exchangePolicy: 'Free exchange within 15 days of delivery for size or defect issues.',
-    
-    // Social Media Links
     socialMedia: {
       facebook: 'https://facebook.com/anilvastralaya',
       instagram: 'https://instagram.com/anilvastralaya',
@@ -76,29 +84,21 @@ export default function SettingsPage() {
       youtube: 'https://youtube.com/anilvastralaya',
       whatsapp: '+919876543210'
     },
-    
-    // Email Settings
     emailSettings: {
       adminEmail: 'admin@anilvastralaya.com',
       orderEmail: 'orders@anilvastralaya.com',
       supportEmail: 'support@anilvastralaya.com',
       newsletterEmail: 'newsletter@anilvastralaya.com'
     },
-    
-    // Appearance Settings
     appearance: {
       primaryColor: '#000000',
       secondaryColor: '#FFF8E7',
       accentColor: '#98635D',
-      headerStyle: 'default',
-      footerStyle: 'default',
       bannerText: 'Summer Sale - Up to 50% Off on Ethnic Wear!',
       bannerEnabled: true,
       showNewsletter: true,
       showSocialIcons: true
     },
-    
-    // Notification Settings
     notifications: {
       emailNotifications: true,
       orderNotifications: true,
@@ -107,25 +107,19 @@ export default function SettingsPage() {
       newUserAlert: true,
       inquiryAlert: true
     },
-    
-    // Security Settings
     security: {
       twoFactorAuth: false,
       sessionTimeout: '60',
       maxLoginAttempts: '5',
       requireStrongPassword: true
     },
-    
-    // SEO Settings
     seo: {
       metaTitle: 'Anil Vastralaya - Premium Ethnic Wear Store',
-      metaDescription: 'Shop the finest collection of sarees, lehengas, kurtas and more. Free shipping & easy returns.',
+      metaDescription: 'Shop the finest collection of sarees, lehengas, kurtas and more.',
       metaKeywords: 'ethnic wear, sarees, lehengas, kurtas, indian fashion',
       enableSitemap: true,
       enableRobots: true
     },
-    
-    // Discount & Coupon Settings
     discounts: {
       enableCoupons: true,
       firstOrderDiscount: '10',
@@ -134,87 +128,73 @@ export default function SettingsPage() {
     }
   })
 
-  // Load settings from localStorage
   useEffect(() => {
-    setIsClient(true)
-    const savedSettings = localStorage.getItem('websiteSettings')
-    if (savedSettings) {
-      const parsed = JSON.parse(savedSettings)
-      setSettings(parsed)
+    const loadSettings = async () => {
+      try {
+        const data = await fetchAPI('/settings')
+        setSettings(prev => ({ ...prev, ...data }))
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
+    loadSettings()
   }, [])
-
-  // Save settings to localStorage
-  useEffect(() => {
-    if (isClient && settings) {
-      localStorage.setItem('websiteSettings', JSON.stringify(settings))
-    }
-  }, [settings, isClient])
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
-    setSettings({
-      ...settings,
-      [name]: type === 'checkbox' ? checked : value
-    })
+    setSettings(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const handleNestedChange = (section, field, value) => {
-    setSettings({
-      ...settings,
-      [section]: {
-        ...settings[section],
-        [field]: value
-      }
-    })
+    setSettings(prev => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value }
+    }))
   }
 
   const handleSocialMediaChange = (platform, value) => {
-    setSettings({
-      ...settings,
-      socialMedia: {
-        ...settings.socialMedia,
-        [platform]: value
-      }
-    })
+    setSettings(prev => ({
+      ...prev,
+      socialMedia: { ...prev.socialMedia, [platform]: value }
+    }))
   }
 
   const handleEmailChange = (type, value) => {
-    setSettings({
-      ...settings,
-      emailSettings: {
-        ...settings.emailSettings,
-        [type]: value
-      }
-    })
+    setSettings(prev => ({
+      ...prev,
+      emailSettings: { ...prev.emailSettings, [type]: value }
+    }))
   }
 
   const handleAppearanceChange = (field, value) => {
-    setSettings({
-      ...settings,
-      appearance: {
-        ...settings.appearance,
-        [field]: value
-      }
-    })
+    setSettings(prev => ({
+      ...prev,
+      appearance: { ...prev.appearance, [field]: value }
+    }))
   }
 
   const handleBusinessHoursChange = (day, value) => {
-    setSettings({
-      ...settings,
-      businessHours: {
-        ...settings.businessHours,
-        [day]: value
-      }
-    })
+    setSettings(prev => ({
+      ...prev,
+      businessHours: { ...prev.businessHours, [day]: value }
+    }))
   }
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    localStorage.setItem('websiteSettings', JSON.stringify(settings))
-    alert('All settings saved successfully!')
-    setIsSaving(false)
+    try {
+      await fetchAPI('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings)
+      })
+      toast.success('All settings saved successfully!')
+    } catch (err) {
+      toast.error('Failed to save settings: ' + err.message)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const resetToDefault = () => {
@@ -224,809 +204,472 @@ export default function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'general', name: 'General', icon: Store },
-    { id: 'business', name: 'Business Hours', icon: Clock },
-    { id: 'payment', name: 'Payment & Tax', icon: DollarSign },
-    { id: 'shipping', name: 'Shipping', icon: Truck },
-    { id: 'social', name: 'Social Media', icon: Share2 },
-    { id: 'email', name: 'Email', icon: Mail },
-    { id: 'appearance', name: 'Appearance', icon: Palette },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'security', name: 'Security', icon: Lock },
-    { id: 'seo', name: 'SEO', icon: Globe },
-    { id: 'discounts', name: 'Discounts', icon: Tag }
+    { id: 'general', name: 'General', icon: Store, color: 'bg-blue-500' },
+    { id: 'business', name: 'Business Hours', icon: Clock, color: 'bg-amber-500' },
+    { id: 'payment', name: 'Payment & Tax', icon: DollarSign, color: 'bg-emerald-500' },
+    { id: 'shipping', name: 'Shipping', icon: Truck, color: 'bg-purple-500' },
+    { id: 'social', name: 'Social Media', icon: Share2, color: 'bg-pink-500' },
+    { id: 'email', name: 'Email', icon: Mail, color: 'bg-cyan-500' },
+    { id: 'appearance', name: 'Appearance', icon: Palette, color: 'bg-rose-500' },
+    { id: 'notifications', name: 'Notifications', icon: Bell, color: 'bg-orange-500' },
+    { id: 'security', name: 'Security', icon: Shield, color: 'bg-red-500' },
+    { id: 'seo', name: 'SEO', icon: Globe, color: 'bg-teal-500' },
+    { id: 'discounts', name: 'Discounts', icon: Tag, color: 'bg-indigo-500' }
   ]
 
-  if (!isClient) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your website configuration</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={resetToDefault}
-            className="bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition flex items-center space-x-2"
-          >
-            <RefreshCw className="w-5 h-5" />
-            <span>Reset to Default</span>
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition flex items-center space-x-2 disabled:bg-gray-400"
-          >
-            {isSaving ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5" />
-                <span>Save All Settings</span>
-              </>
-            )}
-          </button>
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+              <Settings className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+              <p className="text-sm text-gray-500">Manage your website configuration</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={resetToDefault}
+              className="flex items-center space-x-2 px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-gray-700 text-sm font-medium"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Reset</span>
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center space-x-2 bg-black text-white px-6 py-2.5 rounded-lg hover:bg-gray-800 transition text-sm font-medium disabled:bg-gray-400"
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Settings Container */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        {/* Tabs */}
-        <div className="border-b border-gray-200 overflow-x-auto">
-          <div className="flex min-w-max">
+      {/* Content */}
+      <div className="flex flex-col lg:flex-row">
+        {/* Sidebar Navigation */}
+        <div className="lg:w-64 bg-white border-r border-gray-200 lg:min-h-[calc(100vh-73px)]">
+          <nav className="p-3 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon
+              const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-6 py-4 text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-b-2 border-black text-black'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-black text-white shadow-lg shadow-black/10'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {tab.name}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/20' : tab.color}`}>
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-white'}`} />
+                  </div>
+                  <span>{tab.name}</span>
+                  {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
                 </button>
               )
             })}
-          </div>
+          </nav>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-[calc(100vh-300px)] overflow-y-auto">
-          
-          {/* General Settings */}
-          {activeTab === 'general' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">General Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="storeName"
-                    value={settings.storeName}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Tagline
-                  </label>
-                  <input
-                    type="text"
-                    name="storeTagline"
-                    value={settings.storeTagline}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="storeEmail"
-                    value={settings.storeEmail}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Phone 1 *
-                  </label>
-                  <input
-                    type="tel"
-                    name="storePhone"
-                    value={settings.storePhone}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Phone 2
-                  </label>
-                  <input
-                    type="tel"
-                    name="storePhone2"
-                    value={settings.storePhone2}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Address *
-                  </label>
-                  <textarea
-                    name="storeAddress"
-                    value={settings.storeAddress}
-                    onChange={handleInputChange}
-                    rows="2"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Store Description
-                  </label>
-                  <textarea
-                    name="storeDescription"
-                    value={settings.storeDescription}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Main Content */}
+        <div className="flex-1 p-6 lg:p-8">
+          <div className="max-w-4xl">
 
-          {/* Business Hours */}
-          {activeTab === 'business' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Business Hours</h2>
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            {/* General Settings */}
+            {activeTab === 'general' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monday - Friday
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.businessHours.monday_friday}
-                    onChange={(e) => handleBusinessHoursChange('monday_friday', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    placeholder="10:00 AM - 9:00 PM"
-                  />
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">General Settings</h2>
+                  <p className="text-sm text-gray-500">Basic information about your store</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Saturday
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.businessHours.saturday}
-                    onChange={(e) => handleBusinessHoursChange('saturday', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    placeholder="10:00 AM - 9:00 PM"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sunday
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.businessHours.sunday}
-                    onChange={(e) => handleBusinessHoursChange('sunday', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    placeholder="11:00 AM - 8:00 PM"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Payment & Tax Settings */}
-          {activeTab === 'payment' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Payment & Tax Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Currency
-                  </label>
-                  <select
-                    name="currency"
-                    value={settings.currency}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  >
-                    <option value="INR">Indian Rupee (₹)</option>
-                    <option value="USD">US Dollar ($)</option>
-                    <option value="EUR">Euro (€)</option>
-                    <option value="GBP">British Pound (£)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tax Name
-                  </label>
-                  <input
-                    type="text"
-                    name="taxName"
-                    value={settings.taxName}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tax Percentage (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="taxPercentage"
-                    value={settings.taxPercentage}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="flex items-center pt-6">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="enableTax"
-                      checked={settings.enableTax}
-                      onChange={handleInputChange}
-                      className="w-5 h-5 text-black focus:ring-black rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Enable Tax on Products</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Shipping Settings */}
-          {activeTab === 'shipping' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Shipping Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Standard Shipping Charges ({settings.currencySymbol})
-                  </label>
-                  <input
-                    type="number"
-                    name="shippingCharges"
-                    value={settings.shippingCharges}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Free Shipping Above ({settings.currencySymbol})
-                  </label>
-                  <input
-                    type="number"
-                    name="freeShippingAbove"
-                    value={settings.freeShippingAbove}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Minimum Delivery Time (Days)
-                  </label>
-                  <input
-                    type="number"
-                    name="deliveryTimeMin"
-                    value={settings.deliveryTimeMin}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maximum Delivery Time (Days)
-                  </label>
-                  <input
-                    type="number"
-                    name="deliveryTimeMax"
-                    value={settings.deliveryTimeMax}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Return Policy
-                  </label>
-                  <textarea
-                    name="returnPolicy"
-                    value={settings.returnPolicy}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Exchange Policy
-                  </label>
-                  <textarea
-                    name="exchangePolicy"
-                    value={settings.exchangePolicy}
-                    onChange={handleInputChange}
-                    rows="2"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Social Media Settings */}
-          {activeTab === 'social' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Social Media Links</h2>
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Facebook className="w-4 h-4 inline mr-2" /> Facebook URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.socialMedia.facebook}
-                    onChange={(e) => handleSocialMediaChange('facebook', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Instagram className="w-4 h-4 inline mr-2" /> Instagram URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.socialMedia.instagram}
-                    onChange={(e) => handleSocialMediaChange('instagram', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Twitter className="w-4 h-4 inline mr-2" /> Twitter URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.socialMedia.twitter}
-                    onChange={(e) => handleSocialMediaChange('twitter', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Youtube className="w-4 h-4 inline mr-2" /> YouTube URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.socialMedia.youtube}
-                    onChange={(e) => handleSocialMediaChange('youtube', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <MessageCircle className="w-4 h-4 inline mr-2" /> WhatsApp Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={settings.socialMedia.whatsapp}
-                    onChange={(e) => handleSocialMediaChange('whatsapp', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Email Settings */}
-          {activeTab === 'email' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Email Configuration</h2>
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Admin Email
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.emailSettings.adminEmail}
-                    onChange={(e) => handleEmailChange('adminEmail', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Notifications Email
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.emailSettings.orderEmail}
-                    onChange={(e) => handleEmailChange('orderEmail', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Support Email
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.emailSettings.supportEmail}
-                    onChange={(e) => handleEmailChange('supportEmail', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Newsletter Email
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.emailSettings.newsletterEmail}
-                    onChange={(e) => handleEmailChange('newsletterEmail', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Appearance Settings */}
-          {activeTab === 'appearance' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Appearance Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Primary Color
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={settings.appearance.primaryColor}
-                      onChange={(e) => handleAppearanceChange('primaryColor', e.target.value)}
-                      className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={settings.appearance.primaryColor}
-                      onChange={(e) => handleAppearanceChange('primaryColor', e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    />
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField label="Store Name" required>
+                      <input type="text" name="storeName" value={settings.storeName} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Store Tagline">
+                      <input type="text" name="storeTagline" value={settings.storeTagline} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Store Email" required>
+                      <input type="email" name="storeEmail" value={settings.storeEmail} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Store Phone 1" required>
+                      <input type="tel" name="storePhone" value={settings.storePhone} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Store Phone 2">
+                      <input type="tel" name="storePhone2" value={settings.storePhone2} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <div className="md:col-span-2">
+                      <InputField label="Store Address" required>
+                        <textarea name="storeAddress" value={settings.storeAddress} onChange={handleInputChange} rows="2" className={inputClass + " resize-none"} />
+                      </InputField>
+                    </div>
+                    <div className="md:col-span-2">
+                      <InputField label="Store Description">
+                        <textarea name="storeDescription" value={settings.storeDescription} onChange={handleInputChange} rows="3" className={inputClass + " resize-none"} />
+                      </InputField>
+                    </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Business Hours */}
+            {activeTab === 'business' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Secondary Color
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={settings.appearance.secondaryColor}
-                      onChange={(e) => handleAppearanceChange('secondaryColor', e.target.value)}
-                      className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={settings.appearance.secondaryColor}
-                      onChange={(e) => handleAppearanceChange('secondaryColor', e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    />
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Business Hours</h2>
+                  <p className="text-sm text-gray-500">Set your store operating hours</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <InputField label="Monday - Friday">
+                      <input type="text" value={settings.businessHours.monday_friday} onChange={(e) => handleBusinessHoursChange('monday_friday', e.target.value)} className={inputClass + " placeholder-gray-500"} placeholder="10:00 AM - 9:00 PM" />
+                    </InputField>
+                    <InputField label="Saturday">
+                      <input type="text" value={settings.businessHours.saturday} onChange={(e) => handleBusinessHoursChange('saturday', e.target.value)} className={inputClass + " placeholder-gray-500"} placeholder="10:00 AM - 9:00 PM" />
+                    </InputField>
+                    <InputField label="Sunday">
+                      <input type="text" value={settings.businessHours.sunday} onChange={(e) => handleBusinessHoursChange('sunday', e.target.value)} className={inputClass + " placeholder-gray-500"} placeholder="11:00 AM - 8:00 PM" />
+                    </InputField>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Payment & Tax */}
+            {activeTab === 'payment' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Accent Color
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={settings.appearance.accentColor}
-                      onChange={(e) => handleAppearanceChange('accentColor', e.target.value)}
-                      className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={settings.appearance.accentColor}
-                      onChange={(e) => handleAppearanceChange('accentColor', e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    />
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Payment & Tax Settings</h2>
+                  <p className="text-sm text-gray-500">Configure payment and tax options</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField label="Currency">
+                      <select name="currency" value={settings.currency} onChange={handleInputChange} className={inputClass + " bg-gray-50"}>
+                        <option value="INR">Indian Rupee (₹)</option>
+                        <option value="USD">US Dollar ($)</option>
+                        <option value="EUR">Euro (€)</option>
+                        <option value="GBP">British Pound (£)</option>
+                      </select>
+                    </InputField>
+                    <InputField label="Tax Name">
+                      <input type="text" name="taxName" value={settings.taxName} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Tax Percentage (%)">
+                      <input type="number" name="taxPercentage" value={settings.taxPercentage} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <div className="flex items-center pt-6">
+                      <div className="flex items-center justify-between w-full p-4 bg-gray-50 rounded-xl">
+                        <span className="text-sm font-medium text-gray-700">Enable Tax on Products</span>
+                        <Toggle checked={settings.enableTax} onChange={handleInputChange} name="enableTax" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Announcement Banner Text
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.appearance.bannerText}
-                    onChange={(e) => handleAppearanceChange('bannerText', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
+              </div>
+            )}
+
+            {/* Shipping */}
+            {activeTab === 'shipping' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Shipping Settings</h2>
+                  <p className="text-sm text-gray-500">Configure shipping and delivery options</p>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField label={`Standard Shipping (${settings.currencySymbol})`}>
+                      <input type="number" name="shippingCharges" value={settings.shippingCharges} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label={`Free Shipping Above (${settings.currencySymbol})`}>
+                      <input type="number" name="freeShippingAbove" value={settings.freeShippingAbove} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Min Delivery Time (Days)">
+                      <input type="number" name="deliveryTimeMin" value={settings.deliveryTimeMin} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <InputField label="Max Delivery Time (Days)">
+                      <input type="number" name="deliveryTimeMax" value={settings.deliveryTimeMax} onChange={handleInputChange} className={inputClass} />
+                    </InputField>
+                    <div className="md:col-span-2">
+                      <InputField label="Return Policy">
+                        <textarea name="returnPolicy" value={settings.returnPolicy} onChange={handleInputChange} rows="3" className={inputClass + " resize-none"} />
+                      </InputField>
+                    </div>
+                    <div className="md:col-span-2">
+                      <InputField label="Exchange Policy">
+                        <textarea name="exchangePolicy" value={settings.exchangePolicy} onChange={handleInputChange} rows="2" className={inputClass + " resize-none"} />
+                      </InputField>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Social Media */}
+            {activeTab === 'social' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Social Media Links</h2>
+                  <p className="text-sm text-gray-500">Connect your social media accounts</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                  <div className="space-y-4">
+                    {[
+                      { key: 'facebook', label: 'Facebook URL', icon: Facebook, color: 'bg-blue-600' },
+                      { key: 'instagram', label: 'Instagram URL', icon: Instagram, color: 'bg-gradient-to-br from-purple-600 to-pink-500' },
+                      { key: 'twitter', label: 'Twitter URL', icon: Twitter, color: 'bg-sky-500' },
+                      { key: 'youtube', label: 'YouTube URL', icon: Youtube, color: 'bg-red-600' },
+                      { key: 'whatsapp', label: 'WhatsApp Number', icon: MessageCircle, color: 'bg-green-500' }
+                    ].map(({ key, label, icon: Icon, color }) => (
+                      <div key={key} className="flex items-center space-x-4">
+                        <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                          <input
+                            type={key === 'whatsapp' ? 'tel' : 'url'}
+                            value={settings.socialMedia[key]}
+                            onChange={(e) => handleSocialMediaChange(key, e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Email */}
+            {activeTab === 'email' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Email Configuration</h2>
+                  <p className="text-sm text-gray-500">Manage email addresses for notifications</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField label="Admin Email">
+                      <input type="email" value={settings.emailSettings.adminEmail} onChange={(e) => handleEmailChange('adminEmail', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <InputField label="Order Notifications Email">
+                      <input type="email" value={settings.emailSettings.orderEmail} onChange={(e) => handleEmailChange('orderEmail', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <InputField label="Customer Support Email">
+                      <input type="email" value={settings.emailSettings.supportEmail} onChange={(e) => handleEmailChange('supportEmail', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <InputField label="Newsletter Email">
+                      <input type="email" value={settings.emailSettings.newsletterEmail} onChange={(e) => handleEmailChange('newsletterEmail', e.target.value)} className={inputClass} />
+                    </InputField>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Appearance */}
+            {activeTab === 'appearance' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Appearance Settings</h2>
+                  <p className="text-sm text-gray-500">Customize your store's look and feel</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
                   <div>
-                    <p className="font-medium text-gray-800">Enable Announcement Banner</p>
-                    <p className="text-sm text-gray-500">Show banner on top of website</p>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Brand Colors</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[
+                        { key: 'primaryColor', label: 'Primary Color' },
+                        { key: 'secondaryColor', label: 'Secondary Color' },
+                        { key: 'accentColor', label: 'Accent Color' }
+                      ].map(({ key, label }) => (
+                        <div key={key} className="p-4 bg-gray-50 rounded-xl space-y-3">
+                          <label className="text-sm font-medium text-gray-700">{label}</label>
+                          <div className="flex items-center space-x-3">
+                            <input type="color" value={settings.appearance[key]} onChange={(e) => handleAppearanceChange(key, e.target.value)} className="w-10 h-10 rounded-lg border-2 border-gray-200 cursor-pointer" />
+                            <input type="text" value={settings.appearance[key]} onChange={(e) => handleAppearanceChange(key, e.target.value)} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none bg-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.appearance.bannerEnabled}
-                      onChange={(e) => handleAppearanceChange('bannerEnabled', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Notification Settings */}
-          {activeTab === 'notifications' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Notification Preferences</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-800">Email Notifications</p>
-                    <p className="text-sm text-gray-500">Receive email updates about your store</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.emailNotifications}
-                      onChange={(e) => handleNestedChange('notifications', 'emailNotifications', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-800">Order Notifications</p>
-                    <p className="text-sm text-gray-500">Get notified when new orders are placed</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.orderNotifications}
-                      onChange={(e) => handleNestedChange('notifications', 'orderNotifications', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-800">Low Stock Alert</p>
-                    <p className="text-sm text-gray-500">Get alert when product stock is low</p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.notifications.lowStockAlert}
-                        onChange={(e) => handleNestedChange('notifications', 'lowStockAlert', e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                    </label>
-                    {settings.notifications.lowStockAlert && (
-                      <input
-                        type="number"
-                        value={settings.notifications.lowStockThreshold}
-                        onChange={(e) => handleNestedChange('notifications', 'lowStockThreshold', e.target.value)}
-                        className="w-20 border border-gray-300 rounded-lg p-2 text-center"
-                        placeholder="Qty"
-                      />
-                    )}
+                  <div className="border-t border-gray-100 pt-6">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Announcement Banner</h3>
+                    <div className="space-y-4">
+                      <InputField label="Banner Text">
+                        <input type="text" value={settings.appearance.bannerText} onChange={(e) => handleAppearanceChange('bannerText', e.target.value)} className={inputClass} />
+                      </InputField>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div>
+                          <p className="font-medium text-gray-800">Enable Announcement Banner</p>
+                          <p className="text-sm text-gray-500">Show banner on top of website</p>
+                        </div>
+                        <Toggle checked={settings.appearance.bannerEnabled} onChange={(e) => handleAppearanceChange('bannerEnabled', e.target.checked)} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Security Settings */}
-          {activeTab === 'security' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Security Settings</h2>
-              <div className="grid grid-cols-1 gap-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-800">Two-Factor Authentication</p>
-                    <p className="text-sm text-gray-500">Add an extra layer of security</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.security.twoFactorAuth}
-                      onChange={(e) => handleNestedChange('security', 'twoFactorAuth', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                  </label>
-                </div>
+            {/* Notifications */}
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Session Timeout (Minutes)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.security.sessionTimeout}
-                    onChange={(e) => handleNestedChange('security', 'sessionTimeout', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Notification Preferences</h2>
+                  <p className="text-sm text-gray-500">Choose what notifications you receive</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Max Login Attempts
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.security.maxLoginAttempts}
-                    onChange={(e) => handleNestedChange('security', 'maxLoginAttempts', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-800">Require Strong Password</p>
-                    <p className="text-sm text-gray-500">Enforce strong password policy</p>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                  <div className="space-y-3">
+                    {[
+                      { key: 'emailNotifications', title: 'Email Notifications', desc: 'Receive email updates about your store' },
+                      { key: 'orderNotifications', title: 'Order Notifications', desc: 'Get notified when new orders are placed' },
+                      { key: 'newUserAlert', title: 'New User Alert', desc: 'Get notified when new users register' },
+                      { key: 'inquiryAlert', title: 'Inquiry Alert', desc: 'Get notified for new customer inquiries' }
+                    ].map(({ key, title, desc }) => (
+                      <div key={key} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition">
+                        <div>
+                          <p className="font-medium text-gray-800">{title}</p>
+                          <p className="text-sm text-gray-500">{desc}</p>
+                        </div>
+                        <Toggle checked={settings.notifications[key]} onChange={(e) => handleNestedChange('notifications', key, e.target.checked)} />
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition">
+                      <div>
+                        <p className="font-medium text-gray-800">Low Stock Alert</p>
+                        <p className="text-sm text-gray-500">Get alert when product stock is low</p>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <Toggle checked={settings.notifications.lowStockAlert} onChange={(e) => handleNestedChange('notifications', 'lowStockAlert', e.target.checked)} />
+                        {settings.notifications.lowStockAlert && (
+                          <input type="number" value={settings.notifications.lowStockThreshold} onChange={(e) => handleNestedChange('notifications', 'lowStockThreshold', e.target.value)} className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-center text-gray-900 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-black outline-none" placeholder="Qty" />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.security.requireStrongPassword}
-                      onChange={(e) => handleNestedChange('security', 'requireStrongPassword', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                  </label>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* SEO Settings */}
-          {activeTab === 'seo' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">SEO Settings</h2>
-              <div className="grid grid-cols-1 gap-6">
+            {/* Security */}
+            {activeTab === 'security' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta Title
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.seo.metaTitle}
-                    onChange={(e) => handleNestedChange('seo', 'metaTitle', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Security Settings</h2>
+                  <p className="text-sm text-gray-500">Protect your account and data</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta Description
-                  </label>
-                  <textarea
-                    value={settings.seo.metaDescription}
-                    onChange={(e) => handleNestedChange('seo', 'metaDescription', e.target.value)}
-                    rows="3"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta Keywords
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.seo.metaKeywords}
-                    onChange={(e) => handleNestedChange('seo', 'metaKeywords', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                    placeholder="keyword1, keyword2, keyword3"
-                  />
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition">
+                      <div>
+                        <p className="font-medium text-gray-800">Two-Factor Authentication</p>
+                        <p className="text-sm text-gray-500">Add an extra layer of security</p>
+                      </div>
+                      <Toggle checked={settings.security.twoFactorAuth} onChange={(e) => handleNestedChange('security', 'twoFactorAuth', e.target.checked)} />
+                    </div>
+                    <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition">
+                      <div>
+                        <p className="font-medium text-gray-800">Require Strong Password</p>
+                        <p className="text-sm text-gray-500">Enforce strong password policy</p>
+                      </div>
+                      <Toggle checked={settings.security.requireStrongPassword} onChange={(e) => handleNestedChange('security', 'requireStrongPassword', e.target.checked)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
+                    <InputField label="Session Timeout (Minutes)">
+                      <input type="number" value={settings.security.sessionTimeout} onChange={(e) => handleNestedChange('security', 'sessionTimeout', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <InputField label="Max Login Attempts">
+                      <input type="number" value={settings.security.maxLoginAttempts} onChange={(e) => handleNestedChange('security', 'maxLoginAttempts', e.target.value)} className={inputClass} />
+                    </InputField>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Discount & Coupon Settings */}
-          {activeTab === 'discounts' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Discount & Coupon Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-6">
+            {/* SEO */}
+            {activeTab === 'seo' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">SEO Settings</h2>
+                  <p className="text-sm text-gray-500">Optimize your site for search engines</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <InputField label="Meta Title">
+                    <input type="text" value={settings.seo.metaTitle} onChange={(e) => handleNestedChange('seo', 'metaTitle', e.target.value)} className={inputClass} />
+                  </InputField>
+                  <InputField label="Meta Description">
+                    <textarea value={settings.seo.metaDescription} onChange={(e) => handleNestedChange('seo', 'metaDescription', e.target.value)} rows="3" className={inputClass + " resize-none"} />
+                  </InputField>
+                  <InputField label="Meta Keywords">
+                    <input type="text" value={settings.seo.metaKeywords} onChange={(e) => handleNestedChange('seo', 'metaKeywords', e.target.value)} className={inputClass + " placeholder-gray-500"} placeholder="keyword1, keyword2, keyword3" />
+                  </InputField>
+                </div>
+              </div>
+            )}
+
+            {/* Discounts */}
+            {activeTab === 'discounts' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Discount & Coupon Settings</h2>
+                  <p className="text-sm text-gray-500">Configure discounts and promotional offers</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                     <div>
                       <p className="font-medium text-gray-800">Enable Coupons & Discounts</p>
                       <p className="text-sm text-gray-500">Allow customers to use coupon codes</p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={settings.discounts.enableCoupons}
-                        onChange={(e) => handleNestedChange('discounts', 'enableCoupons', e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                    </label>
+                    <Toggle checked={settings.discounts.enableCoupons} onChange={(e) => handleNestedChange('discounts', 'enableCoupons', e.target.checked)} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
+                    <InputField label="First Order Discount (%)">
+                      <input type="number" value={settings.discounts.firstOrderDiscount} onChange={(e) => handleNestedChange('discounts', 'firstOrderDiscount', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <InputField label="Referral Discount (%)">
+                      <input type="number" value={settings.discounts.referralDiscount} onChange={(e) => handleNestedChange('discounts', 'referralDiscount', e.target.value)} className={inputClass} />
+                    </InputField>
+                    <div className="md:col-span-2">
+                      <InputField label={`Minimum Order for Coupon (${settings.currencySymbol})`}>
+                        <input type="number" value={settings.discounts.minimumOrderForCoupon} onChange={(e) => handleNestedChange('discounts', 'minimumOrderForCoupon', e.target.value)} className={inputClass} />
+                      </InputField>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First Order Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.discounts.firstOrderDiscount}
-                    onChange={(e) => handleNestedChange('discounts', 'firstOrderDiscount', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Referral Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.discounts.referralDiscount}
-                    onChange={(e) => handleNestedChange('discounts', 'referralDiscount', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Minimum Order Amount for Coupon ({settings.currencySymbol})
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.discounts.minimumOrderForCoupon}
-                    onChange={(e) => handleNestedChange('discounts', 'minimumOrderForCoupon', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900"
-                  />
-                </div>
               </div>
-            </div>
-          )}
+            )}
+
+          </div>
         </div>
       </div>
     </div>
