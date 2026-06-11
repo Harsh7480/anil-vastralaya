@@ -133,7 +133,35 @@ export default function ShopPage() {
             <h2 className="text-2xl font-serif text-gray-900 mb-10 text-center">
               Shop by Category
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {/* Mobile: horizontal scrollable slider */}
+            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none md:hidden">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setActiveCategory(category.id)}
+                  className={`group relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 shrink-0 snap-start ${
+                    activeCategory === category.id
+                      ? 'ring-2 ring-gray-900 shadow-lg'
+                      : 'shadow-md'
+                  }`}
+                >
+                  <div className="relative w-[140px] aspect-square overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3]">
+                      <ShopCategoryImage src={category.image} alt={category.name} />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="text-white text-sm font-medium tracking-wide drop-shadow">
+                        {category.name}
+                      </h3>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop: original centered design, 6 columns */}
+            <div className="hidden md:grid md:grid-cols-6 gap-6">
               {categories.map((category) => (
                 <button
                   key={category.id}
@@ -144,20 +172,21 @@ export default function ShopPage() {
                       : 'bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3] hover:ring-2 hover:ring-gray-400'
                   }`}
                 >
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="w-24 h-24 mb-4 relative">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                    <div className="w-20 h-20 mb-3 relative">
                       <ShopCategoryImage src={category.image} alt={category.name} />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
                       {category.name}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs text-gray-600 line-clamp-1">
                       {category.description || ''}
                     </p>
                   </div>
                 </button>
               ))}
             </div>
+
             {activeCategory !== 'all' && (
               <div className="text-center mt-8">
                 <button

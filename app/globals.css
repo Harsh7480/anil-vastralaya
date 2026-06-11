@@ -56,6 +56,8 @@ body {
   background: var(--background);
   color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* All buttons get pointer cursor */
@@ -63,29 +65,19 @@ button {
   cursor: pointer;
 }
 
-/* Modern scrollbar for testimonial slider */
+/* Elegant serif font */
+.font-serif {
+  font-family: 'Playfair Display', 'Georgia', serif;
+}
+
+/* Modern scrollbar - hidden */
 .scrollbar-none {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .scrollbar-none::-webkit-scrollbar {
   width: 0;
   height: 0;
-}
-
-.scrollbar-custom::-webkit-scrollbar {
-  height: 8px;
-}
-.scrollbar-custom::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 9999px;
-}
-.scrollbar-custom::-webkit-scrollbar-thumb {
-  background: rgba(152, 99, 93, 0.8);
-  border-radius: 9999px;
-}
-.scrollbar-custom::-webkit-scrollbar-thumb:hover {
-  background: rgba(152, 99, 93, 1);
 }
 
 /* Toast animations */
@@ -102,4 +94,14 @@ button {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+/* Scroll indicator animation */
+@keyframes scrollDown {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }

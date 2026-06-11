@@ -1,54 +1,45 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function SaleSection() {
   return (
-    <section className="relative w-full h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[90vh] overflow-hidden">
-
+    <section className="relative w-full h-[70vh] min-h-[500px] overflow-hidden">
       {/* Background Image */}
       <Image
         src="/images/sale.png"
-        alt="Sale Banner"
+        alt="Sale"
         fill
         priority
         className="object-cover object-center"
       />
 
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/20"></div>
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
-      {/* Center Content */}
-      <div className="absolute inset-0 flex items-center justify-center px-4">
-        
-        <div className="bg-white/20 backdrop-blur-md 
-                        px-6 py-6 sm:px-8 sm:py-8 md:px-10 md:py-10 
-                        text-center 
-                        w-full max-w-[90%] sm:max-w-md md:max-w-lg 
-                        rounded-lg">
-
-          {/* Heading */}
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl 
-                         font-serif text-gray-900 mb-2 sm:mb-3">
-            End Of The Year Sale
-          </h2>
-
-          {/* Subtitle */}
-          <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-4 sm:mb-6">
-            Upto 60% Off
+      {/* Content */}
+      <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 lg:px-16 flex items-center">
+        <div className="max-w-xl">
+          <p className="text-white/60 text-xs tracking-[0.4em] uppercase mb-4">
+            Limited Time
           </p>
-
-          {/* Button */}
-          <button className="border border-black 
-                             px-4 py-2 sm:px-6 sm:py-3 
-                             text-xs sm:text-sm tracking-widest 
-                             hover:bg-black hover:text-white 
-                             transition duration-300">
-            EXPLORE OUR COLLECTION
-          </button>
-
+          <h2 className="text-5xl lg:text-7xl font-serif text-white leading-tight mb-4">
+            End of Season
+            <br />
+            <span className="italic">Sale</span>
+          </h2>
+          <p className="text-white/70 text-lg font-light mb-10 max-w-md">
+            Up to 60% off on selected styles. Don&apos;t miss out on your favorites.
+          </p>
+          <Link
+            href="/shop"
+            className="group inline-flex items-center gap-4 bg-white text-gray-900 px-10 py-4 text-xs tracking-[0.25em] uppercase font-medium hover:bg-gray-900 hover:text-white transition-all duration-500"
+          >
+            Shop the Sale
+            <span className="block w-5 h-[1px] bg-gray-900 group-hover:bg-white group-hover:w-7 transition-all duration-300" />
+          </Link>
         </div>
-
       </div>
     </section>
   )

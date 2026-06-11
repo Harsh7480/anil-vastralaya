@@ -1,79 +1,143 @@
-'use client' // Required for Next.js App Router (client-side interactivity)
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 
 export default function Hero() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
   const slides = [
-    '/images/hero1.png',
-    '/images/hero2.png',
-    '/images/hero3.png',
+    {
+      image: '/images/hero1.png',
+      tagline: 'New Season 2024',
+      title: 'Timeless\nElegance',
+    },
+    {
+      image: '/images/hero2.png',
+      tagline: 'Ethnic Collection',
+      title: 'Grace\nRedefined',
+    },
+    {
+      image: '/images/hero3.png',
+      tagline: 'Premium Selection',
+      title: 'Pure\nSophistication',
+    },
   ]
 
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const goToSlide = useCallback((index) => {
+    if (index !== currentSlide && !isTransitioning) {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentSlide(index)
+        setIsTransitioning(false)
+      }, 800)
+    }
+  }, [currentSlide, isTransitioning])
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length)
-    }, 5000) 
-
+      goToSlide((currentSlide + 1) % slides.length)
+    }, 6000)
     return () => clearInterval(interval)
-  }, [slides.length])
+  }, [currentSlide, slides.length, goToSlide])
 
   return (
-    <section className="relative w-full h-[80vh] min-h-[500px] overflow-hidden">
-      {/* Slides wrapper */}
-      <div
-        className="flex h-full transition-transform duration-1000 ease-in-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-      >
-        {slides.map((imageSrc, index) => (
-          <div
-            key={index}
-            className="min-w-full h-full relative flex-shrink-0 bg-gray-100"
-          >
-            {/* Full-screen background image – no text added */}
+    <section className="relative w-full h-screen min-h-[700px] overflow-hidden">
+      {/* Background Images with crossfade */}
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-[1200ms] ease-in-out ${
+            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <Image
+            src={slide.image}
+            alt=""
+            fill
+            className="object-cover object-center scale-[1.02]"
+            priority={index === 0}
+          />
+        </div>
+      ))}
+
+      {/* Gradient overlays for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10" />
+
+      {/* Content */}
+      <div className="relative z-20 h-full max-w-[1400px] mx-auto px-8 lg:px-16">
+        <div className="flex flex-col justify-end h-full pb-32 lg:pb-40">
+          {slides.map((slide, index) => (
             <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageSrc})` }}
+              key={index}
+              className={`absolute bottom-32 lg:bottom-40 left-8 lg:left-16 transition-all duration-1000 ease-out ${
+                index === currentSlide
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
             >
-              {/* Optional subtle overlay – remove if you want images 100% clear */}
-              <div className="absolute inset-0 bg-black/30" />
+              {index === currentSlide && (
+                <div className="max-w-2xl">
+                  {/* Tagline */}
+                  <p className="text-white/60 text-xs sm:text-sm tracking-[0.4em] uppercase mb-6 font-light">
+                    {slide.tagline}
+                  </p>
+
+                  {/* Main Title */}
+                  <h1 className="text-6xl sm:text-7xl lg:text-[5.5rem] font-serif text-white leading-[1.05] mb-0 whitespace-pre-line">
+                    {slide.title}
+                  </h1>
+
+                  {/* CTA */}
+                  <div className="mt-10">
+                    <Link
+                      href="/shop"
+                      className="group inline-flex items-center gap-4 text-white/90 text-sm tracking-[0.25em] uppercase transition-all duration-500 hover:text-white"
+                    >
+                      <span className="block w-12 h-[1px] bg-white/50 group-hover:w-16 group-hover:bg-white transition-all duration-500" />
+                      Shop Now
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Optional centered content – remove this whole block if you want NO text */}
-            <div className="hidden relative h-full flex items-center justify-center text-center px-6 z-10">
-              <div className="max-w-4xl">
-                <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-2xl">
-                  New Fashion Collection
-                </h1>
-
-                <p className="text-xl md:text-2xl text-gray-100 mb-10 drop-shadow-lg">
-                  Discover the latest trends in clothing and fashion.
-                </p>
-
-                <button className="bg-white text-black px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition-all shadow-xl">
-                  Explore Collection
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Navigation dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex space-x-4 z-20">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-3.5 h-3.5 rounded-full transition-all duration-300 ${
-              index === currentIndex
-                ? 'bg-white scale-125 shadow-md'
-                : 'bg-white/60 hover:bg-white/90'
-            }`}
-            aria-label={`Slide ${index + 1}`}
-          />
-        ))}
+      {/* Bottom bar with indicators and slide number */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10">
+        <div className="max-w-[1400px] mx-auto px-8 lg:px-16 flex items-center justify-between h-16">
+          {/* Left: Slide indicators */}
+          <div className="flex items-center gap-8">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                className="relative group"
+                aria-label={`Slide ${index + 1}`}
+              >
+                <span
+                  className={`block h-[1px] transition-all duration-700 ease-out ${
+                    index === currentSlide
+                      ? 'w-16 bg-white'
+                      : 'w-8 bg-white/30 group-hover:bg-white/50'
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Slide counter */}
+          <div className="text-white/40 text-xs tracking-[0.3em] font-light">
+            <span className="text-white/80">{String(currentSlide + 1).padStart(2, '0')}</span>
+            <span className="mx-2 text-white/20">—</span>
+            <span>{String(slides.length).padStart(2, '0')}</span>
+          </div>
+        </div>
       </div>
     </section>
   )
