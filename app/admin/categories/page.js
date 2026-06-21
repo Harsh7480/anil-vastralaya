@@ -15,6 +15,7 @@ import {
   Tag,
   AlertCircle,
 } from 'lucide-react'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 function AdminCategoryImage({ src, alt }) {
   const [hasError, setHasError] = useState(false)
@@ -49,6 +50,7 @@ export default function CategoriesPage() {
   const [imagePreview, setImagePreview] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [deleteModal, setDeleteModal] = useState({ open: false, id: null, name: '' })
 
   useEffect(() => {
     loadCategories()
@@ -161,30 +163,17 @@ export default function CategoriesPage() {
     }
   }
 
-  const deleteCategory = async (id) => {
-    const category = categories.find((cat) => cat.id === id)
-    const productCount = category?._count?.products || 0
-
-    if (productCount > 0) {
-      toast.error(
-        `Cannot delete "${category.name}" because it has ${productCount} products. Please reassign or delete products first.`,
-      )
-      return
+  const deleteCategory = async () => {
+    try {
+      await fetchAPI(`/categories/${deleteModal.id}`, { method: 'DELETE' });
+      setCategories(categories.filter(c => c.id !== deleteModal.id));
+      toast.success('Category deleted successfully!');
+    } catch (err) {
+      toast.error('Failed to delete category: ' + err.message);
+    } finally {
+      setDeleteModal({ open: false, id: null, name: '' });
     }
-
-    if (
-      confirm(`Are you sure you want to delete "${category.name}" category?`)
-    ) {
-      try {
-        await fetchAPI(`/categories/${id}`, { method: 'DELETE' })
-        setCategories(categories.filter((cat) => cat.id !== id))
-        toast.success('Category deleted successfully!')
-      } catch (error) {
-        console.error('Failed to delete category:', error)
-        toast.error(`Failed to delete category: ${error.message}`)
-      }
-    }
-  }
+  };
 
   const toggleCategoryStatus = async (id) => {
     const category = categories.find((cat) => cat.id === id)
@@ -390,7 +379,7 @@ export default function CategoriesPage() {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deleteCategory(category.id)}
+                    onClick={() => setDeleteModal({ open: true, id: category.id, name: category.name })}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                     title="Delete Category"
                   >
@@ -588,6 +577,15 @@ export default function CategoriesPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, name: '' })}
+        onConfirm={deleteCategory}
+        title="Delete Category"
+        message={`Are you sure you want to delete "${deleteModal.name}" category? All products in this category will be affected.`}
+        type="danger"
+        confirmText="Delete"
+      />
     </div>
   )
 }

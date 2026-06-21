@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   if (user) {
-    router.push('/')
+    router.push(user.role === 'admin' ? '/admin' : '/')
     return null
   }
 
@@ -35,8 +35,8 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      await login(form.email, form.password)
-      router.push('/')
+      const result = await login(form.email, form.password)
+      router.push(result.user.role === 'admin' ? '/admin' : '/')
     } catch (err) {
       setError(err.message || 'Invalid email or password')
     } finally {
@@ -77,7 +77,7 @@ export default function LoginPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={handleChange}
                   placeholder="Enter your password"
-                  className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
                 <button
                   type="button"

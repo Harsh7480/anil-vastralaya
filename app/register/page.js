@@ -87,7 +87,7 @@ export default function RegisterPage() {
                   value={form.name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function RegisterPage() {
                   value={form.password}
                   onChange={handleChange}
                   placeholder="Min. 6 characters"
-                  className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
                 <button
                   type="button"
@@ -142,7 +142,7 @@ export default function RegisterPage() {
                   value={form.confirmPassword}
                   onChange={handleChange}
                   placeholder="Re-enter password"
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#98635D] focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>

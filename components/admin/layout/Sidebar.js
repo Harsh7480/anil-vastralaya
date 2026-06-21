@@ -13,6 +13,7 @@ import {
   FiPhone,
   FiSettings,
   FiUser,
+  FiUsers,
 } from 'react-icons/fi'
 import { MdDashboard } from 'react-icons/md'
 
@@ -24,6 +25,11 @@ export default function Sidebar({ sidebarOpen }) {
       name: 'Dashboard',
       href: '/admin',
       icon: MdDashboard,
+    },
+    {
+      name: 'Users',
+      href: '/admin/users',
+      icon: FiUsers,
     },
     // {
     //   name: 'Upload Data',

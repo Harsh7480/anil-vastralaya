@@ -19,6 +19,7 @@ import {
   Star,
   Eye
 } from 'lucide-react';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 function AdminProductImage({ src, alt }) {
   const [hasError, setHasError] = useState(false);
@@ -50,6 +51,7 @@ export default function ProductsPage() {
     category: '',
     subcategory: '',
     tag: '',
+    sizes: '',
     stock: '',
     status: 'active',
     featured: false,
@@ -62,6 +64,7 @@ export default function ProductsPage() {
   const [filterFeatured, setFilterFeatured] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ open: false, id: null, name: '' });
 
   const tags = ['Bestseller', 'New', 'Sale', 'Trending', 'Limited Edition'];
 
@@ -115,6 +118,7 @@ export default function ProductsPage() {
       category: '',
       subcategory: '',
       tag: '',
+      sizes: '',
       stock: '',
       status: 'active',
       featured: false,
@@ -134,6 +138,7 @@ export default function ProductsPage() {
       category: catId,
       subcategory: product.subcategory || '',
       tag: product.tag || '',
+      sizes: product.sizes || '',
       stock: product.inStock ? '10' : '0',
       status: 'active',
       featured: product.featured || false,
@@ -160,6 +165,7 @@ export default function ProductsPage() {
       image: formData.image || '/images/placeholder.png',
       tag: formData.tag || null,
       subcategory: formData.subcategory || null,
+      sizes: formData.sizes || null,
       inStock: parseInt(formData.stock || '0') > 0,
       categoryId: formData.category,
       featured: formData.featured,
@@ -197,6 +203,7 @@ export default function ProductsPage() {
       category: '',
       subcategory: '',
       tag: '',
+      sizes: '',
       stock: '',
       status: 'active',
       featured: false,
@@ -205,16 +212,15 @@ export default function ProductsPage() {
     setImagePreview('');
   };
 
-  const deleteProduct = async (id) => {
-    const product = products.find(p => p.id === id);
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
-      try {
-        await fetchAPI(`/products/${id}`, { method: 'DELETE' });
-        setProducts(products.filter(p => p.id !== id));
-        toast.success("Product deleted successfully!");
-      } catch (err) {
-        toast.error("Error deleting product: " + err.message);
-      }
+  const deleteProduct = async () => {
+    try {
+      await fetchAPI(`/products/${deleteModal.id}`, { method: 'DELETE' });
+      setProducts(products.filter(p => p.id !== deleteModal.id));
+      toast.success("Product deleted successfully!");
+    } catch (err) {
+      toast.error("Error deleting product: " + err.message);
+    } finally {
+      setDeleteModal({ open: false, id: null, name: '' });
     }
   };
 
@@ -407,6 +413,7 @@ export default function ProductsPage() {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Price</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Stock</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Tag</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Featured</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Status</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Actions</th>
               </tr>
@@ -448,7 +455,16 @@ export default function ProductsPage() {
                       </span>
                     )}
                    </td>
-                  <td className="px-6 py-4">
+                   <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
+                      product.featured
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {product.featured ? 'Featured' : 'No'}
+                    </span>
+                   </td>
+                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
                       product.inStock
                         ? 'bg-green-100 text-green-600'
@@ -467,7 +483,7 @@ export default function ProductsPage() {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteProduct(product.id)}
+                        onClick={() => setDeleteModal({ open: true, id: product.id, name: product.name })}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                         title="Delete Product"
                       >
@@ -634,6 +650,21 @@ export default function ProductsPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Sizes
+                </label>
+                <input
+                  type="text"
+                  name="sizes"
+                  value={formData.sizes}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-black outline-none text-gray-900 placeholder-gray-400 bg-white"
+                  placeholder="e.g., S, M, L, XL or 2-3Y, 4-5Y, 6-7Y or 28, 30, 32, 34"
+                />
+                <p className="text-xs text-gray-400 mt-1">Comma-separated. Leave empty if product has no sizes.</p>
+              </div>
+
               <div className="flex items-center gap-3">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -721,6 +752,16 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, name: '' })}
+        onConfirm={deleteProduct}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${deleteModal.name}"? This action cannot be undone.`}
+        type="danger"
+        confirmText="Delete"
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { fetchAPI } from '@/utils/api'
 import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
+import { useToast } from '@/context/ToastContext'
 
 function ProductImage({ src, alt, className = '' }) {
   const [hasError, setHasError] = useState(false)
@@ -36,12 +37,14 @@ function ProductImage({ src, alt, className = '' }) {
 export default function ProductDetailPage({ params }) {
   const { slug } = params
   const router = useRouter()
+  const toast = useToast()
   const { addItem } = useCart()
   const { user } = useAuth()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [selectedSize, setSelectedSize] = useState('')
   const [added, setAdded] = useState(false)
 
   // Booking states
@@ -67,8 +70,16 @@ export default function ProductDetailPage({ params }) {
   }, [slug])
 
   const handleAddToCart = () => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
     if (!product) return
-    addItem(product, quantity)
+    if (product.sizes && !selectedSize) {
+      toast.warning('Please select a size before adding to cart')
+      return
+    }
+    addItem(product, quantity, selectedSize)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -76,6 +87,10 @@ export default function ProductDetailPage({ params }) {
   const handleBookNow = () => {
     if (!user) {
       router.push('/login')
+      return
+    }
+    if (product.sizes && !selectedSize) {
+      toast.warning('Please select a size before booking')
       return
     }
     setShowBookingModal(true)
@@ -93,7 +108,7 @@ export default function ProductDetailPage({ params }) {
           customerName: user.name,
           email: user.email,
           phone: bookingPhone,
-          items: [{ productId: product.id, quantity }],
+          items: [{ productId: product.id, quantity, size: selectedSize || null }],
           advancePercentage: advancePercent,
         }),
       })
@@ -285,6 +300,32 @@ export default function ProductDetailPage({ params }) {
                 </div>
               </div>
 
+              {/* Size Selector */}
+              {product.sizes && (
+                <div className="mt-6">
+                  <label className="block text-sm font-semibold text-gray-900 mb-3 tracking-wider uppercase">Select Size</label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.sizes.split(',').map((size) => {
+                      const trimmed = size.trim()
+                      return (
+                        <button
+                          key={trimmed}
+                          type="button"
+                          onClick={() => setSelectedSize(trimmed)}
+                          className={`min-w-[48px] h-10 px-4 rounded-lg text-sm font-semibold border-2 transition-all duration-300 ${
+                            selectedSize === trimmed
+                              ? 'bg-[#98635D] text-white border-[#98635D] shadow-lg'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-[#98635D]'
+                          }`}
+                        >
+                          {trimmed}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Quantity & Add to Cart */}
               {product.inStock && (
                 <div className="flex flex-col sm:flex-row gap-4 mt-auto">
@@ -312,7 +353,7 @@ export default function ProductDetailPage({ params }) {
                         : 'bg-[#98635D] text-white hover:bg-[#7A4E49]'
                     }`}
                   >
-                    {added ? '✓ Added to Cart' : 'Add to Cart'}
+                    {added ? '✓ Added to Cart' : user ? 'Add to Cart' : 'Sign In to Add'}
                   </button>
                 </div>
               )}
@@ -410,7 +451,7 @@ export default function ProductDetailPage({ params }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                    <p className="text-xs text-gray-500">Qty: {quantity}</p>
+                    <p className="text-xs text-gray-500">Qty: {quantity}{selectedSize ? ` | Size: ${selectedSize}` : ''}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-gray-900">₹{totalPrice.toLocaleString()}</p>

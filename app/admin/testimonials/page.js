@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 export default function TestimonialsPage() {
   const toast = useToast()
@@ -34,6 +35,7 @@ export default function TestimonialsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRating, setFilterRating] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })
 
   useEffect(() => {
     fetchTestimonials()
@@ -142,19 +144,13 @@ export default function TestimonialsPage() {
 
   const deleteTestimonial = async (id) => {
     const testimonial = testimonials.find((item) => item.id === id)
-    if (
-      confirm(
-        `Are you sure you want to delete "${testimonial.name}"'s testimonial?`,
-      )
-    ) {
-      try {
-        await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
-        setTestimonials((prev) => prev.filter((item) => item.id !== id))
-        toast.success('Testimonial deleted successfully!')
-      } catch (error) {
-        console.error('Failed to delete testimonial:', error)
-        toast.error(error.message || 'Failed to delete testimonial.')
-      }
+    try {
+      await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
+      setTestimonials((prev) => prev.filter((item) => item.id !== id))
+      toast.success('Testimonial deleted successfully!')
+    } catch (error) {
+      console.error('Failed to delete testimonial:', error)
+      toast.error(error.message || 'Failed to delete testimonial.')
     }
   }
 
@@ -417,7 +413,16 @@ export default function TestimonialsPage() {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteTestimonial(testimonial.id)}
+                        onClick={() => {
+                          const testimonialToDelete = testimonials.find((t) => t.id === testimonial.id)
+                          setConfirmModal({
+                            open: true,
+                            title: 'Delete Testimonial',
+                            message: `Are you sure you want to delete "${testimonialToDelete?.name}"'s testimonial?`,
+                            onConfirm: () => deleteTestimonial(testimonial.id),
+                            type: 'danger'
+                          })
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                         title="Delete Testimonial"
                       >
@@ -454,6 +459,16 @@ export default function TestimonialsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' }); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
+      />
 
       {/* Add/Edit Modal */}
       {isModalOpen && (

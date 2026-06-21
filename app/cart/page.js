@@ -81,7 +81,7 @@ export default function CartPage() {
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${item.size || 'default'}`}
                     className="flex gap-4 sm:gap-6 p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300"
                   >
                     {/* Image */}
@@ -107,9 +107,12 @@ export default function CartPage() {
                           >
                             {item.name}
                           </Link>
+                          {item.size && (
+                            <p className="text-[10px] text-gray-500 font-medium mt-0.5">Size: {item.size}</p>
+                          )}
                         </div>
                         <button
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item.id, item.size)}
                           className="shrink-0 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-300"
                           aria-label="Remove item"
                         >
@@ -123,7 +126,7 @@ export default function CartPage() {
                         {/* Quantity */}
                         <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(item.id, item.quantity - 1, item.size)}
                             className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors text-sm"
                           >
                             -
@@ -132,7 +135,7 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.id, item.quantity + 1, item.size)}
                             className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors text-sm"
                           >
                             +
@@ -221,9 +224,12 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-                <button className="w-full bg-[#98635D] text-white text-sm font-semibold py-4 rounded-full tracking-wider uppercase hover:bg-[#7A4E49] transition-all duration-500 shadow-lg hover:shadow-xl mb-4">
+                <Link
+                  href="/checkout"
+                  className="block w-full bg-[#98635D] text-white text-sm font-semibold py-4 rounded-full tracking-wider uppercase text-center hover:bg-[#7A4E49] transition-all duration-500 shadow-lg hover:shadow-xl mb-4"
+                >
                   Proceed to Checkout
-                </button>
+                </Link>
 
                 <Link
                   href="/shop"

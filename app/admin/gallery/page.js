@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 function AdminGalleryImage({ src, alt }) {
   const [hasError, setHasError] = useState(false)
@@ -53,6 +54,7 @@ export default function GalleryPage() {
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })
 
   const galleryCategories = ['New Arrivals', 'Bridal', 'Festive', 'Casual']
 
@@ -169,16 +171,12 @@ export default function GalleryPage() {
 
   const deleteItem = async (id) => {
     const item = galleryItems.find((item) => item.id === id)
-    if (
-      confirm(`Are you sure you want to delete "${item.title}" from gallery?`)
-    ) {
-      try {
-        await fetchAPI(`/gallery/${id}`, { method: 'DELETE' })
-        await loadGallery()
-        toast.success('Gallery item deleted successfully!')
-      } catch (error) {
-        toast.error('Failed to delete gallery item: ' + error.message)
-      }
+    try {
+      await fetchAPI(`/gallery/${id}`, { method: 'DELETE' })
+      await loadGallery()
+      toast.success('Gallery item deleted successfully!')
+    } catch (error) {
+      toast.error('Failed to delete gallery item: ' + error.message)
     }
   }
 
@@ -396,7 +394,16 @@ export default function GalleryPage() {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteItem(item.id)}
+                        onClick={() => {
+                          const itemToDelete = galleryItems.find((g) => g.id === item.id)
+                          setConfirmModal({
+                            open: true,
+                            title: 'Delete Gallery Item',
+                            message: `Are you sure you want to delete "${itemToDelete?.title}" from gallery?`,
+                            onConfirm: () => deleteItem(item.id),
+                            type: 'danger'
+                          })
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                         title="Delete Item"
                       >
@@ -433,6 +440,16 @@ export default function GalleryPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' }); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
+      />
 
       {/* Add/Edit Modal */}
       {isModalOpen && (

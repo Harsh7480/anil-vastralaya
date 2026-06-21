@@ -20,6 +20,7 @@ import {
   Download,
   RefreshCw,
 } from 'lucide-react'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 export default function ContactSubmissionsPage() {
   const toast = useToast()
@@ -30,6 +31,8 @@ export default function ContactSubmissionsPage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterSubject, setFilterSubject] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [deleteModal, setDeleteModal] = useState({ open: false, id: null, name: '' })
+  const [deleteAllModal, setDeleteAllModal] = useState({ open: false })
 
   const subjects = [
     'General Inquiry',
@@ -76,40 +79,32 @@ export default function ContactSubmissionsPage() {
     }
   }
 
-  const deleteSubmission = async (id) => {
-    const submission = submissions.find((sub) => sub.id === id)
-    if (
-      confirm(
-        `Are you sure you want to delete message from ${submission.firstName} ${submission.lastName}?`,
-      )
-    ) {
-      try {
-        await fetchAPI(`/contact/${id}`, { method: 'DELETE' })
-        setSubmissions((prev) => prev.filter((sub) => sub.id !== id))
-        toast.success('Message deleted successfully!')
-      } catch (error) {
-        console.error('Failed to delete submission:', error)
-        toast.error('Failed to delete message.')
-      }
+  const deleteSubmission = async () => {
+    const id = deleteModal.id
+    try {
+      await fetchAPI(`/contact/${id}`, { method: 'DELETE' })
+      setSubmissions((prev) => prev.filter((sub) => sub.id !== id))
+      toast.success('Message deleted successfully!')
+    } catch (error) {
+      console.error('Failed to delete submission:', error)
+      toast.error('Failed to delete message.')
+    } finally {
+      setDeleteModal({ open: false, id: null, name: '' })
     }
   }
 
   const deleteAllSubmissions = async () => {
-    if (
-      confirm(
-        'Are you sure you want to delete ALL messages? This action cannot be undone!',
-      )
-    ) {
-      try {
-        for (const sub of submissions) {
-          await fetchAPI(`/contact/${sub.id}`, { method: 'DELETE' })
-        }
-        setSubmissions([])
-        toast.success('All messages deleted!')
-      } catch (error) {
-        console.error('Failed to delete all submissions:', error)
-        toast.error('Failed to delete all messages.')
+    try {
+      for (const sub of submissions) {
+        await fetchAPI(`/contact/${sub.id}`, { method: 'DELETE' })
       }
+      setSubmissions([])
+      toast.success('All messages deleted!')
+    } catch (error) {
+      console.error('Failed to delete all submissions:', error)
+      toast.error('Failed to delete all messages.')
+    } finally {
+      setDeleteAllModal({ open: false })
     }
   }
 
@@ -222,7 +217,7 @@ export default function ContactSubmissionsPage() {
             <span>Export CSV</span>
           </button>
           <button
-            onClick={deleteAllSubmissions}
+            onClick={() => setDeleteAllModal({ open: true })}
             className="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition flex items-center space-x-2"
             disabled={submissions.length === 0}
           >
@@ -412,7 +407,7 @@ export default function ContactSubmissionsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => deleteSubmission(submission.id)}
+                          onClick={() => setDeleteModal({ open: true, id: submission.id, name: submission.firstName || 'this message' })}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                           title="Delete Message"
                         >
@@ -553,7 +548,7 @@ export default function ContactSubmissionsPage() {
                   )}
                   <button
                     onClick={() => {
-                      deleteSubmission(selectedSubmission.id)
+                      setDeleteModal({ open: true, id: selectedSubmission.id, name: selectedSubmission.firstName || 'this message' })
                       setIsViewModalOpen(false)
                     }}
                     className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center space-x-2"
@@ -567,6 +562,25 @@ export default function ContactSubmissionsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, name: '' })}
+        onConfirm={deleteSubmission}
+        title="Delete Message"
+        message={`Are you sure you want to delete this message from "${deleteModal.name}"?`}
+        type="danger"
+        confirmText="Delete"
+      />
+      <ConfirmModal
+        isOpen={deleteAllModal.open}
+        onClose={() => setDeleteAllModal({ open: false })}
+        onConfirm={deleteAllSubmissions}
+        title="Delete All Messages"
+        message="Are you sure you want to delete all contact messages? This action cannot be undone."
+        type="danger"
+        confirmText="Delete All"
+      />
     </div>
   )
 }

@@ -17,6 +17,7 @@ import {
   User,
   Calendar,
 } from 'lucide-react'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 export default function AdminDashboard() {
   const toast = useToast()
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
   })
 
   const [testimonials, setTestimonials] = useState([])
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })
   const [stats, setStats] = useState({
     totalTestimonials: 0,
     avgRating: 0,
@@ -105,31 +107,27 @@ export default function AdminDashboard() {
   }
 
   const deleteTestimonial = async (id) => {
-    if (confirm('Are you sure you want to delete this testimonial?')) {
-      try {
-        await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
-        const updated = testimonials.filter((t) => t.id !== id)
-        setTestimonials(updated)
-        updateStats(updated)
-        toast.success('Testimonial deleted successfully!')
-      } catch (err) {
-        toast.error('Failed to delete testimonial: ' + err.message)
-      }
+    try {
+      await fetchAPI(`/testimonials/${id}`, { method: 'DELETE' })
+      const updated = testimonials.filter((t) => t.id !== id)
+      setTestimonials(updated)
+      updateStats(updated)
+      toast.success('Testimonial deleted successfully!')
+    } catch (err) {
+      toast.error('Failed to delete testimonial: ' + err.message)
     }
   }
 
   const deleteAllTestimonials = async () => {
-    if (confirm('Delete all testimonials?')) {
-      try {
-        for (const t of testimonials) {
-          await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
-        }
-        setTestimonials([])
-        updateStats([])
-        toast.success('All testimonials deleted!')
-      } catch (err) {
-        toast.error('Failed to delete all testimonials: ' + err.message)
+    try {
+      for (const t of testimonials) {
+        await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
       }
+      setTestimonials([])
+      updateStats([])
+      toast.success('All testimonials deleted!')
+    } catch (err) {
+      toast.error('Failed to delete all testimonials: ' + err.message)
     }
   }
 
@@ -143,17 +141,15 @@ export default function AdminDashboard() {
   }
 
   const handleClearAll = async () => {
-    if (confirm('Clear all data?')) {
-      try {
-        for (const t of testimonials) {
-          await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
-        }
-        setTestimonials([])
-        updateStats([])
-        toast.success('All data cleared!')
-      } catch (err) {
-        toast.error('Failed to clear data: ' + err.message)
+    try {
+      for (const t of testimonials) {
+        await fetchAPI(`/testimonials/${t.id}`, { method: 'DELETE' })
       }
+      setTestimonials([])
+      updateStats([])
+      toast.success('All data cleared!')
+    } catch (err) {
+      toast.error('Failed to clear data: ' + err.message)
     }
   }
 
@@ -397,7 +393,13 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                       <button
-                        onClick={() => deleteTestimonial(testimonial.id)}
+                        onClick={() => setConfirmModal({
+                          open: true,
+                          title: 'Delete Testimonial',
+                          message: 'Are you sure you want to delete this testimonial?',
+                          onConfirm: () => deleteTestimonial(testimonial.id),
+                          type: 'danger'
+                        })}
                         className="text-red-500 hover:text-red-700 transition ml-4 p-1 hover:bg-red-50 rounded-lg"
                         title="Delete testimonial"
                       >
@@ -412,7 +414,13 @@ export default function AdminDashboard() {
             {testimonials.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
-                  onClick={deleteAllTestimonials}
+                  onClick={() => setConfirmModal({
+                    open: true,
+                    title: 'Delete All Testimonials',
+                    message: 'Delete all testimonials? This action cannot be undone.',
+                    onConfirm: () => deleteAllTestimonials(),
+                    type: 'danger'
+                  })}
                   className="text-red-600 text-sm hover:text-red-700 transition flex items-center space-x-1"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -467,7 +475,13 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={handleClearAll}
+              onClick={() => setConfirmModal({
+                open: true,
+                title: 'Clear All Data',
+                message: 'Clear all data? This will delete all testimonials and cannot be undone.',
+                onConfirm: () => handleClearAll(),
+                type: 'danger'
+              })}
               className="bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-lg transition flex items-center justify-center space-x-2 group"
             >
               <Trash2 className="w-5 h-5 group-hover:scale-110 transition" />
@@ -476,6 +490,15 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' }); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
+      />
     </div>
   )
 }

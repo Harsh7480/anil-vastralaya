@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { fetchAPI } from '@/utils/api'
 import { useToast } from '@/context/ToastContext'
+import ConfirmModal from '@/components/admin/ConfirmModal'
 
 const Toggle = React.memo(({ checked, onChange }) => (
   <label className="relative inline-flex items-center cursor-pointer">
@@ -53,6 +54,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('general')
   const [isSaving, setIsSaving] = useState(false)
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })
   const [settings, setSettings] = useState({
     storeName: 'Anil Vastralaya',
     storeTagline: 'One of the best clothing store',
@@ -198,9 +200,7 @@ export default function SettingsPage() {
   }
 
   const resetToDefault = () => {
-    if (confirm('Are you sure you want to reset all settings to default?')) {
-      window.location.reload()
-    }
+    window.location.reload()
   }
 
   const tabs = [
@@ -241,7 +241,13 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={resetToDefault}
+              onClick={() => setConfirmModal({
+                open: true,
+                title: 'Reset Settings',
+                message: 'Are you sure you want to reset all settings to default?',
+                onConfirm: () => resetToDefault(),
+                type: 'danger'
+              })}
               className="flex items-center space-x-2 px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-gray-700 text-sm font-medium"
             >
               <RefreshCw className="w-4 h-4" />
@@ -672,6 +678,15 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' })}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal({ open: false, title: '', message: '', onConfirm: null, type: 'danger' }); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
+      />
     </div>
   )
 }

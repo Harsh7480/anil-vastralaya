@@ -26,9 +26,12 @@ function BookingItemImage({ src, alt }) {
 }
 
 const statusConfig = {
+  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
   booked: { label: 'Booked', color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
+  shipped: { label: 'Shipped', color: 'bg-indigo-100 text-indigo-800', dot: 'bg-indigo-500' },
   ready: { label: 'Ready for Pickup', color: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
+  delivered: { label: 'Delivered', color: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
   completed: { label: 'Completed', color: 'bg-gray-100 text-gray-800', dot: 'bg-gray-500' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
 }
@@ -77,9 +80,9 @@ export default function MyBookingsPage() {
       {/* Header */}
       <section className="bg-[#FAF7F2] py-10">
         <div className="max-w-7xl mx-auto px-6">
-          <p className="text-[10px] tracking-[0.3em] uppercase text-[#98635D] mb-2 font-medium">Your Reservations</p>
-          <h1 className="text-3xl lg:text-4xl font-serif text-gray-900">My Bookings</h1>
-          <p className="text-sm text-gray-500 mt-2">Track and manage your pre-booked products</p>
+          <p className="text-[10px] tracking-[0.3em] uppercase text-[#98635D] mb-2 font-medium">Your Orders</p>
+          <h1 className="text-3xl lg:text-4xl font-serif text-gray-900">My Orders</h1>
+          <p className="text-sm text-gray-500 mt-2">Track and manage your orders and bookings</p>
         </div>
       </section>
 
@@ -97,9 +100,9 @@ export default function MyBookingsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-serif text-gray-900 mb-3">No Bookings Yet</h2>
+              <h2 className="text-2xl font-serif text-gray-900 mb-3">No Orders Yet</h2>
               <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                You haven&apos;t pre-booked any products yet. Browse our shop and book your favorites!
+                You haven&apos;t placed any orders yet. Browse our shop and find something you love!
               </p>
               <Link
                 href="/shop"
@@ -122,9 +125,18 @@ export default function MyBookingsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 bg-[#FAF7F2]/50 border-b border-gray-100">
                       <div className="flex items-center gap-4">
                         <div>
-                          <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400 font-medium">Booking Code</p>
-                          <p className="text-lg font-bold text-gray-900 tracking-wider">{booking.bookingCode}</p>
+                          <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400 font-medium">
+                            {booking.bookingCode ? 'Booking Code' : 'Order ID'}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900 tracking-wider">
+                            {booking.bookingCode || booking.id.slice(0, 8).toUpperCase()}
+                          </p>
                         </div>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          booking.bookingType === 'advance' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {booking.bookingType === 'advance' ? 'Advance' : 'Full Order'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
@@ -150,7 +162,7 @@ export default function MyBookingsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{item.product?.name}</p>
-                            <p className="text-xs text-gray-500">Qty: {item.quantity} | ₹{item.price.toLocaleString()} each</p>
+                            <p className="text-xs text-gray-500">Qty: {item.quantity}{item.size ? ` | Size: ${item.size}` : ''} | ₹{item.price.toLocaleString()} each</p>
                           </div>
                           <p className="text-sm font-semibold text-gray-900">
                             ₹{(item.price * item.quantity).toLocaleString()}
@@ -161,28 +173,49 @@ export default function MyBookingsPage() {
 
                     {/* Payment Summary */}
                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="text-center p-3 bg-white rounded-xl">
-                          <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Total Amount</p>
-                          <p className="text-lg font-bold text-gray-900">₹{booking.totalAmount.toLocaleString()}</p>
+                      {booking.bookingType === 'advance' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="text-center p-3 bg-white rounded-xl">
+                            <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Total Amount</p>
+                            <p className="text-lg font-bold text-gray-900">₹{booking.totalAmount.toLocaleString()}</p>
+                          </div>
+                          <div className="text-center p-3 bg-[#98635D]/5 rounded-xl">
+                            <p className="text-[10px] tracking-wider uppercase text-[#98635D] mb-1">Paid ({booking.advancePercentage}%)</p>
+                            <p className="text-lg font-bold text-[#98635D]">₹{booking.advanceAmount?.toLocaleString()}</p>
+                          </div>
+                          <div className="text-center p-3 bg-amber-50 rounded-xl">
+                            <p className="text-[10px] tracking-wider uppercase text-amber-600 mb-1">Pay at Shop</p>
+                            <p className="text-lg font-bold text-amber-700">₹{booking.remainingAmount?.toLocaleString()}</p>
+                          </div>
                         </div>
-                        <div className="text-center p-3 bg-[#98635D]/5 rounded-xl">
-                          <p className="text-[10px] tracking-wider uppercase text-[#98635D] mb-1">Paid ({booking.advancePercentage}%)</p>
-                          <p className="text-lg font-bold text-[#98635D]">₹{booking.advanceAmount?.toLocaleString()}</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="text-center p-3 bg-white rounded-xl">
+                            <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Total Amount</p>
+                            <p className="text-lg font-bold text-gray-900">₹{booking.totalAmount.toLocaleString()}</p>
+                          </div>
+                          <div className="text-center p-3 bg-[#98635D]/5 rounded-xl">
+                            <p className="text-[10px] tracking-wider uppercase text-[#98635D] mb-1">Shipping</p>
+                            <p className="text-lg font-bold text-[#98635D]">
+                              {booking.totalAmount >= 999 ? 'FREE' : '₹99'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-center p-3 bg-amber-50 rounded-xl">
-                          <p className="text-[10px] tracking-wider uppercase text-amber-600 mb-1">Pay at Shop</p>
-                          <p className="text-lg font-bold text-amber-700">₹{booking.remainingAmount?.toLocaleString()}</p>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Footer Note */}
                     {booking.status !== 'completed' && booking.status !== 'cancelled' && (
                       <div className="px-6 py-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-500 text-center">
-                          Visit our shop with booking code <span className="font-bold text-gray-900">{booking.bookingCode}</span> and pay ₹{booking.remainingAmount?.toLocaleString()} to collect your product.
-                        </p>
+                        {booking.bookingType === 'advance' ? (
+                          <p className="text-xs text-gray-500 text-center">
+                            Visit our shop with booking code <span className="font-bold text-gray-900">{booking.bookingCode}</span> and pay ₹{booking.remainingAmount?.toLocaleString()} to collect your product.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 text-center">
+                            Your order is being processed. You&apos;ll receive updates on the status.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
