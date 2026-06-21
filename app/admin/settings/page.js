@@ -33,7 +33,7 @@ import { useToast } from '@/context/ToastContext'
 const Toggle = React.memo(({ checked, onChange }) => (
   <label className="relative inline-flex items-center cursor-pointer">
     <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
-    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#98635D] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#98635D]"></div>
   </label>
 ))
 
@@ -46,7 +46,7 @@ const InputField = React.memo(({ label, children, required }) => (
   </div>
 ))
 
-const inputClass = "w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-black focus:border-transparent outline-none text-gray-900 bg-white"
+const inputClass = "w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-[#98635D] focus:border-transparent outline-none text-gray-900 bg-white"
 
 export default function SettingsPage() {
   const toast = useToast()
@@ -231,7 +231,7 @@ export default function SettingsPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#98635D] rounded-xl flex items-center justify-center">
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>

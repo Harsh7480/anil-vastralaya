@@ -34,10 +34,10 @@ export default function SaleSection() {
           </p>
           <Link
             href="/shop"
-            className="group inline-flex items-center gap-4 bg-white text-gray-900 px-10 py-4 text-xs tracking-[0.25em] uppercase font-medium hover:bg-gray-900 hover:text-white transition-all duration-500"
+            className="group inline-flex items-center gap-4 bg-white text-gray-900 px-10 py-4 text-xs tracking-[0.25em] uppercase font-medium hover:bg-[#98635D] hover:text-white transition-all duration-500"
           >
             Shop the Sale
-            <span className="block w-5 h-[1px] bg-gray-900 group-hover:bg-white group-hover:w-7 transition-all duration-300" />
+            <span className="block w-5 h-[1px] bg-[#98635D] group-hover:bg-white group-hover:w-7 transition-all duration-300" />
           </Link>
         </div>
       </div>

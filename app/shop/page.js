@@ -1,7 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { fetchAPI } from '@/utils/api'
 
 function ShopCategoryImage({ src, alt }) {
@@ -50,7 +52,10 @@ function ShopProductImage({ src, alt }) {
   )
 }
 
-export default function ShopPage() {
+function ShopPageContent() {
+  const searchParams = useSearchParams()
+  const categorySlug = searchParams.get('category')
+
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -65,8 +70,16 @@ export default function ShopPage() {
           fetchAPI('/categories'),
           fetchAPI('/products'),
         ])
-        setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.data || [])
+        const cats = Array.isArray(categoriesData) ? categoriesData : categoriesData.data || []
+        setCategories(cats)
         setProducts(Array.isArray(productsData) ? productsData : productsData.data || [])
+
+        if (categorySlug) {
+          const matched = cats.find((c) => c.slug === categorySlug)
+          if (matched) {
+            setActiveCategory(matched.id)
+          }
+        }
       } catch (err) {
         console.error('Failed to load data:', err)
       } finally {
@@ -74,7 +87,7 @@ export default function ShopPage() {
       }
     }
     loadData()
-  }, [])
+  }, [categorySlug])
 
   const filterOptions = ['All', 'Sarees', 'Lehengas', 'Kurtas', 'Suits']
 
@@ -220,7 +233,7 @@ export default function ShopPage() {
                   onClick={() => setActiveFilter(filter)}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
                     activeFilter === filter
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-[#98635D] text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-100'
                   }`}
                 >
@@ -262,46 +275,109 @@ export default function ShopPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-xl overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
-                >
-                  <div className="relative aspect-[3/4] bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3] flex items-center justify-center">
-                    <ShopProductImage src={product.image} alt={product.name} />
-                    {product.tag && (
-                      <span className="absolute top-4 left-4 bg-gray-900 text-white text-xs px-3 py-1 rounded-full">
-                        {product.tag}
-                      </span>
-                    )}
-                    {!product.inStock && (
-                      <span className="absolute top-4 right-4 bg-red-500 text-white text-xs px-3 py-1 rounded-full">
-                        Out of Stock
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
-                      {product.name}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-semibold text-gray-900">
-                        ₹{product.price.toLocaleString()}
-                      </span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-gray-500 line-through">
-                          ₹{product.originalPrice.toLocaleString()}
-                        </span>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filteredProducts.map((product) => {
+                const discount = product.originalPrice
+                  ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+                  : 0
+
+                return (
+                  <Link
+                    key={product.id}
+                    href={`/shop/${product.slug}`}
+                    className="block bg-white rounded-2xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 border border-gray-100"
+                  >
+                    {/* Image Section */}
+                    <div className="relative aspect-[4/5] bg-gradient-to-br from-[#EDE5DB] via-[#F5F0EA] to-[#D9CFC3] overflow-hidden">
+                      <div className="absolute inset-0 flex items-center justify-center p-6">
+                        <ShopProductImage src={product.image} alt={product.name} />
+                      </div>
+
+                      {/* Hover overlay with quick actions */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-500" />
+
+                      {/* Badges */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-2">
+                        {product.tag && (
+                          <span className="bg-gradient-to-r from-[#98635D] to-[#B8826D] text-white text-[10px] font-semibold px-3 py-1 rounded-full tracking-wider uppercase shadow-lg">
+                            {product.tag}
+                          </span>
+                        )}
+                        {discount > 0 && (
+                          <span className="bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg">
+                            -{discount}%
+                          </span>
+                        )}
+                      </div>
+
+                      {!product.inStock && (
+                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                          <span className="bg-[#98635D] text-white text-xs font-semibold px-5 py-2 rounded-full tracking-wider uppercase">
+                            Sold Out
+                          </span>
+                        </div>
                       )}
+
+                      {/* Hover action button */}
+                      <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-500">
+                        <span className="block w-full bg-white/95 backdrop-blur-sm text-gray-900 text-xs font-semibold py-2.5 rounded-xl text-center hover:bg-[#98635D] hover:text-white transition-all duration-300 tracking-wider uppercase shadow-lg">
+                          Quick View
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+
+                    {/* Info Section */}
+                    <div className="p-3">
+                      <p className="text-[10px] text-[#98635D] font-medium tracking-wider uppercase mb-1">
+                        {product.subcategory || 'Collection'}
+                      </p>
+                      <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2 group-hover:text-[#98635D] transition-colors duration-300 leading-snug">
+                        {product.name}
+                      </h3>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-base font-bold text-gray-900">
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                        {product.originalPrice && (
+                          <span className="text-[11px] text-gray-400 line-through">
+                            ₹{product.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>
       </section>
     </main>
+  )
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense
+      fallback={
+        <main>
+          <section className="bg-[#FFF8E7] py-16">
+            <div className="max-w-7xl mx-auto px-6 text-center">
+              <p className="text-sm tracking-[4px] text-gray-600 mb-3">EXPLORE</p>
+              <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4">Shop</h1>
+            </div>
+          </section>
+          <section className="py-16 bg-white">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#98635D]"></div>
+              </div>
+            </div>
+          </section>
+        </main>
+      }
+    >
+      <ShopPageContent />
+    </Suspense>
   )
 }

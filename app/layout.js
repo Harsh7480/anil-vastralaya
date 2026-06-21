@@ -3,6 +3,7 @@ import './globals.css'
 import LayoutWrapper from './LayoutWrapper'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/context/ToastContext'
+import { CartProvider } from '@/context/CartContext'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -35,7 +36,9 @@ export default function RootLayout({ children }) {
       >
         <AuthProvider>
           <ToastProvider>
-            <LayoutWrapper>{children}</LayoutWrapper>
+            <CartProvider>
+              <LayoutWrapper>{children}</LayoutWrapper>
+            </CartProvider>
           </ToastProvider>
         </AuthProvider>
       </body>

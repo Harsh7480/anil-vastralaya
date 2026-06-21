@@ -1,154 +1,361 @@
-// components/layout/Header.jsx
+'use client'
 
-'use client'; 
-
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { 
-  FaSearch, 
-  FaHeart, 
-  FaShoppingCart, 
-  FaBars, 
-  FaTimes 
-} from 'react-icons/fa';
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { usePathname, useRouter } from 'next/navigation'
+import {
+  FaSearch,
+  FaHeart,
+  FaShoppingCart,
+  FaBars,
+  FaTimes,
+  FaUser,
+  FaSignOutAlt,
+  FaUserCircle,
+} from 'react-icons/fa'
+import { useCart } from '@/context/CartContext'
+import { useAuth } from '@/context/AuthContext'
 
 export default function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef(null)
+  const pathname = usePathname()
+  const router = useRouter()
+  const { totalItems } = useCart()
+  const { user, logout } = useAuth()
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    await logout()
+    setShowUserMenu(false)
+    router.push('/')
+  }
+
+  const navLinks = [
+    { href: '/', label: 'Home' },
+    { href: '/shop', label: 'Shop' },
+    { href: '/about', label: 'About' },
+    { href: '/Gallery', label: 'Gallery' },
+    { href: '/contact', label: 'Contact' },
+  ]
+
+  const isActive = (href) => pathname === href
 
   return (
-    <header className="bg-[#FFF8E7] shadow-sm sticky top-0 z-50">
-      {/* Main navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 md:h-20">
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/images/Anil Vastralaya.png"
-              alt="Anil Vastralaya"
-              width={220}
-              height={80}
-              className="h-10 md:h-12 w-auto object-contain"
-              priority
-            />
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link 
-              href="/" 
-              className="text-gray-700 hover:text-black font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link 
-              href="/about" 
-              className="text-gray-700 hover:text-black font-medium transition-colors"
-            >
-              About
-            </Link>
-            <Link 
-              href="/shop" 
-              className="text-gray-700 hover:text-black font-medium transition-colors"
-            >
-              Shop
-            </Link>
-            <Link 
-              href="/Gallery" 
-              className="text-gray-700 hover:text-black font-medium transition-colors"
-            >
-              Gallery
-            </Link>
-            <Link 
-              href="/contact" 
-              className="text-gray-700 hover:text-black font-medium transition-colors"
-            >
-              Contact
-            </Link>
-          </nav>
-
-          {/* Right Icons – Desktop & Mobile */}
-          <div className="flex items-center gap-5 md:gap-7">
-            <button 
-              aria-label="Search"
-              className="text-gray-700 hover:text-black transition-colors"
-            >
-              <FaSearch size={20} />
-            </button>
-            
-            <Link 
-              href="/wishlist" 
-              className="text-gray-700 hover:text-black transition-colors"
-              aria-label="Wishlist"
-            >
-              <FaHeart size={20} />
-            </Link>
-            
-            <Link 
-              href="/cart" 
-              className="text-gray-700 hover:text-black transition-colors relative"
-              aria-label="Cart"
-            >
-              <FaShoppingCart size={22} />
-              {/* Example badge – later connect to real cart count */}
-              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                3
-              </span>
-            </Link>
-
-            {/* Hamburger button – only on mobile */}
-            <button 
-              className="md:hidden text-gray-700 hover:text-black"
-              onClick={toggleMenu}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
-            </button>
-          </div>
-        </div>
+    <>
+      {/* Top Announcement Bar */}
+      <div className="bg-gradient-to-r from-[#98635D] via-[#B8826D] to-[#98635D] text-white text-center py-2 px-4">
+        <p className="text-[11px] tracking-[0.2em] uppercase font-medium">
+          Free Shipping on Orders Above ₹999 | Use Code <span className="font-bold">ANIL10</span> for 10% Off
+        </p>
       </div>
 
-      {/* Mobile Menu (Sidebar / Full overlay) */}
-      {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={toggleMenu}>
-          <div 
-            className="absolute right-0 top-0 h-full w-72 bg-white shadow-xl p-6 flex flex-col"
-            onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
-          >
-            {/* Close button */}
-            <button 
-              className="self-end mb-8 text-gray-700"
-              onClick={toggleMenu}
-            >
-              <FaTimes size={28} />
-            </button>
+      {/* Main Navbar */}
+      <header
+        className={`bg-white/95 backdrop-blur-md sticky top-0 z-50 transition-all duration-500 ${
+          scrolled ? 'shadow-lg shadow-black/5' : 'shadow-sm'
+        }`}
+      >
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="flex justify-between items-center h-16 md:h-18">
 
-            {/* Mobile Links */}
-            <nav className="flex flex-col gap-6 text-lg font-medium">
-              <Link href="/shop" onClick={toggleMenu}>Shop</Link>
-              <Link href="/new-arrivals" onClick={toggleMenu}>New Arrivals</Link>
-              <Link href="/about" onClick={toggleMenu}>About</Link>
-              <Link href="/contact" onClick={toggleMenu}>Contact</Link>
+            {/* Logo */}
+            <Link href="/" className="flex items-center shrink-0">
+              <Image
+                src="/images/Anil Vastralaya.png"
+                alt="Anil Vastralaya"
+                width={220}
+                height={80}
+                className="h-14 md:h-16 w-auto object-contain"
+                priority
+              />
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`relative px-4 py-2 text-[13px] tracking-[0.1em] uppercase font-medium transition-colors duration-300 rounded-full ${
+                    isActive(link.href)
+                      ? 'text-[#98635D]'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {link.label}
+                  {isActive(link.href) && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] bg-[#98635D] rounded-full" />
+                  )}
+                </Link>
+              ))}
             </nav>
 
-            {/* Extra mobile actions */}
-            <div className="mt-auto flex flex-col gap-6 pt-10 border-t">
-              <Link href="/search" className="flex items-center gap-3" onClick={toggleMenu}>
-                <FaSearch /> Search
+            {/* Right Icons */}
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+              {/* Search */}
+              <button
+                aria-label="Search"
+                className="relative w-10 h-10 flex items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
+              >
+                <FaSearch size={16} />
+              </button>
+
+              {/* Auth: Login/Register or User Profile */}
+              {user ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 w-10 h-10 sm:w-auto sm:h-10 sm:px-3 sm:gap-2 items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
+                  >
+                    <FaUserCircle size={18} />
+                    <span className="hidden sm:block text-xs font-medium truncate max-w-[80px]">{user.name}</span>
+                  </button>
+
+                  {/* Dropdown */}
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl shadow-black/10 border border-gray-100 py-2 z-50">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/cart"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#FAF7F2] hover:text-[#98635D] transition-colors"
+                      >
+                        <FaShoppingCart size={14} />
+                        My Cart
+                      </Link>
+                      <Link
+                        href="/my-bookings"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#FAF7F2] hover:text-[#98635D] transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        My Bookings
+                      </Link>
+                      <Link
+                        href="/wishlist"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#FAF7F2] hover:text-[#98635D] transition-colors"
+                      >
+                        <FaHeart size={14} />
+                        Wishlist
+                      </Link>
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <FaSignOutAlt size={14} />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 h-10 px-4 bg-[#98635D] text-white text-xs font-semibold rounded-full hover:bg-[#7A4E49] transition-all duration-300 tracking-wider uppercase"
+                >
+                  <FaUser size={12} />
+                  <span className="hidden sm:inline">Login</span>
+                </Link>
+              )}
+
+              {/* Wishlist */}
+              <Link
+                href="/wishlist"
+                className="relative w-10 h-10 hidden sm:flex items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
+                aria-label="Wishlist"
+              >
+                <FaHeart size={16} />
               </Link>
-              <Link href="/wishlist" className="flex items-center gap-3" onClick={toggleMenu}>
-                <FaHeart /> Wishlist
+
+              {/* Cart */}
+              <Link
+                href="/cart"
+                className="relative w-10 h-10 flex items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
+                aria-label="Cart"
+              >
+                <FaShoppingCart size={17} />
+                {totalItems > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#98635D] text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none px-1">
+                    {totalItems > 99 ? '99+' : totalItems}
+                  </span>
+                )}
               </Link>
-              <Link href="/cart" className="flex items-center gap-3" onClick={toggleMenu}>
-                <FaShoppingCart /> Cart
-              </Link>
+
+              {/* Hamburger */}
+              <button
+                className="lg:hidden w-10 h-10 flex items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
+                onClick={toggleMenu}
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
+              </button>
             </div>
           </div>
         </div>
-      )}
-    </header>
-  );
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300 ${
+          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={toggleMenu}
+      >
+        {/* Sidebar */}
+        <div
+          className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl flex flex-col transition-transform duration-500 ease-out ${
+            isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <div>
+              {user ? (
+                <>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-[#98635D] font-medium">Welcome</p>
+                  <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-[#98635D] font-medium">Hello</p>
+                  <p className="text-sm font-semibold text-gray-900">Guest User</p>
+                </>
+              )}
+            </div>
+            <button
+              onClick={toggleMenu}
+              className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-300"
+            >
+              <FaTimes size={18} />
+            </button>
+          </div>
+
+          {/* Auth Section */}
+          {!user && (
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex gap-3">
+                <Link
+                  href="/login"
+                  onClick={toggleMenu}
+                  className="flex-1 bg-[#98635D] text-white text-xs font-semibold py-2.5 rounded-full text-center tracking-wider uppercase hover:bg-[#7A4E49] transition-all duration-300"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={toggleMenu}
+                  className="flex-1 border border-[#98635D] text-[#98635D] text-xs font-semibold py-2.5 rounded-full text-center tracking-wider uppercase hover:bg-[#98635D] hover:text-white transition-all duration-300"
+                >
+                  Register
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Nav Links */}
+          <nav className="flex-1 px-6 py-6 overflow-y-auto">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={toggleMenu}
+                className={`flex items-center gap-4 py-3.5 text-sm font-medium tracking-wide transition-all duration-300 border-b border-gray-50 ${
+                  isActive(link.href)
+                    ? 'text-[#98635D]'
+                    : 'text-gray-700 hover:text-[#98635D]'
+                }`}
+              >
+                <span className={`w-1 h-1 rounded-full transition-all duration-300 ${
+                  isActive(link.href) ? 'bg-[#98635D]' : 'bg-gray-300'
+                }`} />
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Bottom Actions */}
+          <div className="px-6 py-5 border-t border-gray-100 bg-[#FAF7F2]/50">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/wishlist"
+                onClick={toggleMenu}
+                className="flex items-center gap-2.5 text-xs text-gray-600 hover:text-[#98635D] transition-colors"
+              >
+                <FaHeart size={14} />
+                Wishlist
+              </Link>
+              <Link
+                href="/cart"
+                onClick={toggleMenu}
+                className="flex items-center gap-2.5 text-xs text-gray-600 hover:text-[#98635D] transition-colors"
+              >
+                <FaShoppingCart size={14} />
+                Cart
+                {totalItems > 0 && (
+                  <span className="bg-[#98635D] text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    {totalItems}
+                  </span>
+                )}
+              </Link>
+              {user && (
+                <Link
+                  href="/my-bookings"
+                  onClick={toggleMenu}
+                  className="flex items-center gap-2.5 text-xs text-gray-600 hover:text-[#98635D] transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Bookings
+                </Link>
+              )}
+              {user && (
+                <button
+                  onClick={() => { handleLogout(); toggleMenu() }}
+                  className="flex items-center gap-2.5 text-xs text-red-500 hover:text-red-600 transition-colors ml-auto"
+                >
+                  <FaSignOutAlt size={14} />
+                  Sign Out
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
 }

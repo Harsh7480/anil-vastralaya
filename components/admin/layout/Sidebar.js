@@ -36,14 +36,14 @@ export default function Sidebar({ sidebarOpen }) {
       icon: FiStar,
     },
     {
-      name: 'Products',
-      href: '/admin/products',
-      icon: FiShoppingBag,
-    },
-    {
       name: 'Categories',
       href: '/admin/categories',
       icon: FiFolder,
+    },
+    {
+      name: 'Products',
+      href: '/admin/products',
+      icon: FiShoppingBag,
     },
     {
       name: 'Gallery',

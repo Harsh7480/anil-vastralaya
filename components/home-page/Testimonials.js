@@ -61,7 +61,7 @@ export default function Testimonials() {
   if (testimonials.length === 0) return null
 
   const TestimonialCard = ({ item }) => (
-    <div className="group p-8 lg:p-10 bg-[#FAF7F2] hover:bg-gray-900 transition-colors duration-500 h-full flex flex-col">
+    <div className="group p-8 lg:p-10 bg-[#FAF7F2] hover:bg-[#98635D] transition-colors duration-500 h-full flex flex-col">
       <div className="flex gap-1 mb-6">
         {Array.from({ length: 5 }).map((_, i) => (
           <svg
@@ -125,7 +125,7 @@ export default function Testimonials() {
             <div className="flex justify-center gap-4 mt-10">
               <button
                 onClick={goPrev}
-                className="w-10 h-10 border border-gray-200 flex items-center justify-center hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all duration-300"
+                className="w-10 h-10 border border-gray-400 flex items-center justify-center hover:bg-[#98635D] text-gray-900 hover:text-white hover:border-[#98635D] transition-all duration-300"
                 aria-label="Previous"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +134,7 @@ export default function Testimonials() {
               </button>
               <button
                 onClick={goNext}
-                className="w-10 h-10 border border-gray-200 flex items-center justify-center hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all duration-300"
+                className="w-10 h-10 border border-gray-400 flex items-center justify-center hover:bg-[#98635D] text-gray-900 hover:text-white hover:border-[#98635D] transition-all duration-300"
                 aria-label="Next"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

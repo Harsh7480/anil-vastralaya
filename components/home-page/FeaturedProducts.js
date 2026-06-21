@@ -1,106 +1,152 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { fetchAPI } from '@/utils/api'
 
-export default function FeaturedProducts() {
-  const products = [
-    {
-      name: 'Stylish Kurta',
-      price: '₹999',
-      originalPrice: '₹1,499',
-      image: '/images/product1.png',
-      tag: 'New',
-    },
-    {
-      name: 'Casual Shirt',
-      price: '₹799',
-      originalPrice: '₹1,199',
-      image: '/images/product2.png',
-      tag: null,
-    },
-    {
-      name: 'Designer Saree',
-      price: '₹1,999',
-      originalPrice: '₹2,999',
-      image: '/images/product3.png',
-      tag: 'Bestseller',
-    },
-    {
-      name: 'Kids Party Dress',
-      price: '₹699',
-      originalPrice: '₹999',
-      image: '/images/product4.jpg',
-      tag: null,
-    },
-  ]
+function FeaturedProductImage({ src, alt }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || hasError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <svg className="w-12 h-12 text-[#98635D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    )
+  }
 
   return (
-    <section className="py-24 lg:py-32 bg-[#FAF7F2]">
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
+export default function FeaturedProducts() {
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const data = await fetchAPI('/products/featured')
+        const allProducts = Array.isArray(data) ? data : data.data || []
+        setProducts(allProducts.slice(0, 8))
+      } catch (err) {
+        console.error('Failed to load featured products:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProducts()
+  }, [])
+
+  if (loading || products.length === 0) return null
+
+  return (
+    <section className="py-20 lg:py-28 bg-gradient-to-b from-[#FAF7F2] to-white">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-16">
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-16">
-          <div>
-            <p className="text-xs tracking-[0.4em] uppercase text-gray-400 mb-3">
-              Curated Selection
-            </p>
-            <h2 className="text-4xl lg:text-5xl font-serif text-gray-900">
-              Featured Products
-            </h2>
-          </div>
-          <Link
-            href="/shop"
-            className="group mt-6 sm:mt-0 inline-flex items-center gap-3 text-sm tracking-[0.2em] uppercase text-gray-500 hover:text-gray-900 transition-colors duration-300"
-          >
-            <span>View All</span>
-            <span className="block w-8 h-[1px] bg-gray-400 group-hover:w-12 group-hover:bg-gray-900 transition-all duration-300" />
-          </Link>
+        <div className="text-center mb-14">
+          <p className="text-[10px] tracking-[0.4em] uppercase text-[#98635D] mb-2 font-medium">
+            Curated Selection
+          </p>
+          <h2 className="text-2xl lg:text-3xl font-serif text-gray-900 mb-3">
+            Featured Products
+          </h2>
+          <div className="w-12 h-[2px] bg-gradient-to-r from-[#98635D] to-[#C4A882] mx-auto" />
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-          {products.map((product, index) => (
-            <Link key={index} href="/shop" className="group">
-              {/* Product Image */}
-              <div className="relative aspect-[3/4] overflow-hidden bg-gray-100 mb-5">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {products.map((product) => {
+            const discount = product.originalPrice
+              ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+              : 0
 
-                {/* Tag */}
-                {product.tag && (
-                  <span className="absolute top-4 left-4 bg-white text-gray-900 text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 font-medium">
-                    {product.tag}
-                  </span>
-                )}
+            return (
+              <Link
+                key={product.id}
+                href={`/shop/${product.slug}`}
+                className="group block"
+              >
+                {/* Product Image */}
+                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-br from-[#EDE5DB] via-[#F5F0EA] to-[#D9CFC3] mb-3">
+                  <FeaturedProductImage src={product.image} alt={product.name} />
 
-                {/* Quick View on hover */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out">
-                  <button className="w-full bg-white/95 backdrop-blur-sm text-gray-900 text-xs tracking-[0.2em] uppercase py-3 hover:bg-gray-900 hover:text-white transition-colors duration-300">
-                    Quick View
-                  </button>
-                </div>
-              </div>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-500 rounded-2xl" />
 
-              {/* Product Info */}
-              <div className="text-center">
-                <h3 className="text-sm text-gray-600 tracking-wide mb-2 group-hover:text-gray-900 transition-colors">
-                  {product.name}
-                </h3>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-sm text-gray-900 font-medium">
-                    {product.price}
-                  </span>
-                  {product.originalPrice && (
-                    <span className="text-xs text-gray-400 line-through">
-                      {product.originalPrice}
-                    </span>
+                  {/* Badges */}
+                  <div className="absolute top-3 left-3 flex flex-col gap-2">
+                    {product.tag && (
+                      <span className="bg-gradient-to-r from-[#98635D] to-[#B8826D] text-white text-[10px] font-semibold px-3 py-1 rounded-full tracking-wider uppercase shadow-lg">
+                        {product.tag}
+                      </span>
+                    )}
+                    {discount > 0 && (
+                      <span className="bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg">
+                        -{discount}%
+                      </span>
+                    )}
+                  </div>
+
+                  {!product.inStock && (
+                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-2xl">
+                      <span className="bg-[#98635D] text-white text-xs font-semibold px-5 py-2 rounded-full tracking-wider uppercase">
+                        Sold Out
+                      </span>
+                    </div>
                   )}
+
+                  {/* Quick View on hover */}
+                  <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-500">
+                    <span className="block w-full bg-white/95 backdrop-blur-sm text-gray-900 text-xs font-semibold py-2.5 rounded-xl text-center hover:bg-[#98635D] hover:text-white transition-all duration-300 tracking-wider uppercase shadow-lg">
+                      Quick View
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+
+                {/* Product Info */}
+                <div className="px-1">
+                  <p className="text-[10px] text-[#98635D] font-medium tracking-wider uppercase mb-1">
+                    {product.subcategory || product.category?.name || 'Collection'}
+                  </p>
+                  <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1.5 group-hover:text-[#98635D] transition-colors duration-300 leading-snug">
+                    {product.name}
+                  </h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-bold text-gray-900">
+                      ₹{product.price.toLocaleString()}
+                    </span>
+                    {product.originalPrice && (
+                      <span className="text-[11px] text-gray-400 line-through">
+                        ₹{product.originalPrice.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* View All Link */}
+        <div className="text-center mt-10">
+          <Link
+            href="/shop"
+            className="group inline-flex items-center gap-2 px-6 py-2.5 border border-[#98635D] text-[#98635D] text-xs tracking-[0.15em] uppercase hover:bg-[#98635D] hover:text-white transition-all duration-500 rounded-full"
+          >
+            <span>View All Products</span>
+            <span className="block w-4 h-[1px] bg-current group-hover:w-6 transition-all duration-300" />
+          </Link>
         </div>
       </div>
     </section>

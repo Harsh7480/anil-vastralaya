@@ -136,7 +136,7 @@ export default function ProductsPage() {
       tag: product.tag || '',
       stock: product.inStock ? '10' : '0',
       status: 'active',
-      featured: false,
+      featured: product.featured || false,
       image: product.image || '',
     });
     setImagePreview(product.image || '');
@@ -162,6 +162,7 @@ export default function ProductsPage() {
       subcategory: formData.subcategory || null,
       inStock: parseInt(formData.stock || '0') > 0,
       categoryId: formData.category,
+      featured: formData.featured,
     };
 
     try {
@@ -232,7 +233,9 @@ export default function ProductsPage() {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || getCategoryId(product) === filterCategory;
     const matchesStatus = filterStatus === 'all';
-    const matchesFeatured = filterFeatured === 'all';
+    const matchesFeatured = filterFeatured === 'all' ||
+      (filterFeatured === 'featured' && product.featured) ||
+      (filterFeatured === 'non-featured' && !product.featured);
     return matchesSearch && matchesCategory && matchesStatus && matchesFeatured;
   });
 
@@ -241,7 +244,7 @@ export default function ProductsPage() {
     active: products.length,
     inactive: 0,
     lowStock: products.filter(p => !p.inStock).length,
-    featured: 0,
+    featured: products.filter(p => p.featured).length,
     totalValue: products.reduce((sum, p) => sum + p.price, 0),
   };
 
@@ -629,6 +632,20 @@ export default function ProductsPage() {
                     placeholder="25"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="featured"
+                    checked={formData.featured}
+                    onChange={handleInputChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#98635D] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#98635D]"></div>
+                </label>
+                <span className="text-sm font-medium text-gray-700">Featured on Home Page</span>
               </div>
 
               <div>
