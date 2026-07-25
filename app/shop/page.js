@@ -55,13 +55,18 @@ function ShopProductImage({ src, alt }) {
 function ShopPageContent() {
   const searchParams = useSearchParams()
   const categorySlug = searchParams.get('category')
+  const urlSearchQuery = searchParams.get('search') || ''
 
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('all')
   const [activeFilter, setActiveFilter] = useState('All')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(urlSearchQuery)
+
+  useEffect(() => {
+    setSearchTerm(urlSearchQuery)
+  }, [urlSearchQuery])
 
   useEffect(() => {
     const loadData = async () => {
@@ -151,7 +156,7 @@ function ShopPageContent() {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
+                  onClick={() => { setActiveCategory(category.id); setSearchTerm(''); }}
                   className={`group relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 shrink-0 snap-start ${
                     activeCategory === category.id
                       ? 'ring-2 ring-gray-900 shadow-lg'
@@ -178,7 +183,7 @@ function ShopPageContent() {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
+                  onClick={() => { setActiveCategory(category.id); setSearchTerm(''); }}
                   className={`group relative overflow-hidden rounded-xl aspect-square cursor-pointer transition-all duration-300 ${
                     activeCategory === category.id
                       ? 'ring-4 ring-gray-900 bg-gradient-to-br from-[#EDE5DB] to-[#D9CFC3]'
@@ -203,7 +208,7 @@ function ShopPageContent() {
             {activeCategory !== 'all' && (
               <div className="text-center mt-8">
                 <button
-                  onClick={() => setActiveCategory('all')}
+                  onClick={() => { setActiveCategory('all'); setSearchTerm(''); }}
                   className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
                 >
                   Show All Categories

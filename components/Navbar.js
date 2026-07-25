@@ -21,13 +21,41 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const userMenuRef = useRef(null)
+  const searchInputRef = useRef(null)
   const pathname = usePathname()
   const router = useRouter()
   const { totalItems } = useCart()
   const { user, logout } = useAuth()
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchOpen])
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsSearchOpen(false)
+    }
+    if (isSearchOpen) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isSearchOpen])
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`)
+      setIsSearchOpen(false)
+      setSearchQuery('')
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -119,6 +147,7 @@ export default function Header() {
             <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
               {/* Search */}
               <button
+                onClick={() => setIsSearchOpen(true)}
                 aria-label="Search"
                 className="relative w-10 h-10 flex items-center justify-center text-gray-600 hover:text-[#98635D] hover:bg-[#FAF7F2] rounded-full transition-all duration-300"
               >
@@ -226,6 +255,81 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* Search Overlay */}
+      <div
+        className={`fixed inset-0 z-50 flex items-start justify-center pt-[12vh] transition-all duration-300 ${
+          isSearchOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        />
+
+        {/* Search Modal */}
+        <div
+          className={`relative w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
+            isSearchOpen ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Search Input */}
+          <form onSubmit={handleSearch} className="flex items-center border-b border-gray-100">
+            <div className="pl-6">
+              <FaSearch size={18} className="text-[#98635D]" />
+            </div>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search for products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 px-4 py-5 text-lg text-gray-900 placeholder-gray-400 outline-none bg-transparent"
+            />
+            <div className="pr-4 flex items-center gap-2">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                <FaTimes size={14} />
+              </button>
+            </div>
+          </form>
+
+          {/* Quick Suggestions */}
+          <div className="px-6 py-4">
+            <p className="text-[10px] tracking-[0.15em] uppercase text-gray-400 font-medium mb-3">Popular Searches</p>
+            <div className="flex flex-wrap gap-2">
+              {['Sarees', 'Lehengas', 'Kurtas', 'Suits', 'Cotton'].map((term) => (
+                <button
+                  key={term}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(term)
+                    router.push(`/shop?search=${encodeURIComponent(term)}`)
+                    setIsSearchOpen(false)
+                  }}
+                  className="px-4 py-2 text-sm text-gray-600 bg-[#FAF7F2] hover:bg-[#98635D] hover:text-white rounded-full transition-all duration-200"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Mobile Menu Overlay */}
       <div

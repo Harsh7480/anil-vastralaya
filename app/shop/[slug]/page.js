@@ -49,11 +49,23 @@ export default function ProductDetailPage({ params }) {
 
   // Booking states
   const [showBookingModal, setShowBookingModal] = useState(false)
-  const [advancePercent, setAdvancePercent] = useState(10)
+  const [advancePercent, setAdvancePercent] = useState(20)
   const [bookingPhone, setBookingPhone] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [bookingCode, setBookingCode] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('upi_qr')
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false)
+
+  // Booking settings from admin
+  const [bookingSettings, setBookingSettings] = useState({
+    advancePercentage: 20,
+    upiQrCode: '',
+    upiId: '',
+    bookingTerms: 'Advance payment is non-refundable. Product must be collected within 7 days of confirmation.'
+  })
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -68,6 +80,26 @@ export default function ProductDetailPage({ params }) {
     }
     loadProduct()
   }, [slug])
+
+  useEffect(() => {
+    const loadBookingSettings = async () => {
+      try {
+        const data = await fetchAPI('/settings/public')
+        if (data) {
+          setBookingSettings({
+            advancePercentage: parseInt(data.advancePercentage) || 20,
+            upiQrCode: data.upiQrCode || '',
+            upiId: data.upiId || '',
+            bookingTerms: data.bookingTerms || 'Advance payment is non-refundable. Product must be collected within 7 days of confirmation.'
+          })
+          setAdvancePercent(parseInt(data.advancePercentage) || 20)
+        }
+      } catch (err) {
+        console.error('Failed to load booking settings:', err)
+      }
+    }
+    loadBookingSettings()
+  }, [])
 
   const handleAddToCart = () => {
     if (!user) {
@@ -96,12 +128,62 @@ export default function ProductDetailPage({ params }) {
     setShowBookingModal(true)
   }
 
+  const handleScreenshotChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB')
+        return
+      }
+      setPaymentScreenshot(file)
+      const reader = new FileReader()
+      reader.onloadend = () => setScreenshotPreview(reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadScreenshot = async () => {
+    if (!paymentScreenshot) return null
+    setUploadingScreenshot(true)
+    try {
+      const formData = new FormData()
+      formData.append('screenshot', paymentScreenshot)
+      const result = await fetchAPI('/orders/upload-payment', {
+        method: 'POST',
+        body: formData,
+        isFormData: true,
+      })
+      return result.filePath
+    } catch (err) {
+      console.error('Failed to upload screenshot:', err)
+      toast.error('Failed to upload screenshot')
+      return null
+    } finally {
+      setUploadingScreenshot(false)
+    }
+  }
+
   const handleBookingSubmit = async (e) => {
     e.preventDefault()
     if (!bookingPhone || !user) return
 
+    if (paymentMethod === 'upi_qr' && !paymentScreenshot) {
+      toast.warning('Please upload payment screenshot')
+      return
+    }
+
     setBookingSubmitting(true)
     try {
+      let screenshotPath = null
+      if (paymentMethod === 'upi_qr' && paymentScreenshot) {
+        screenshotPath = await uploadScreenshot()
+        if (!screenshotPath && paymentMethod === 'upi_qr') {
+          toast.error('Failed to upload screenshot. Please try again.')
+          setBookingSubmitting(false)
+          return
+        }
+      }
+
       const result = await fetchAPI('/orders/book', {
         method: 'POST',
         body: JSON.stringify({
@@ -110,12 +192,15 @@ export default function ProductDetailPage({ params }) {
           phone: bookingPhone,
           items: [{ productId: product.id, quantity, size: selectedSize || null }],
           advancePercentage: advancePercent,
+          paymentMethod,
+          paymentScreenshot: screenshotPath,
         }),
       })
       setBookingCode(result.bookingCode)
       setBookingSuccess(true)
     } catch (err) {
       console.error('Booking failed:', err)
+      toast.error('Booking failed. Please try again.')
     } finally {
       setBookingSubmitting(false)
     }
@@ -363,7 +448,7 @@ export default function ProductDetailPage({ params }) {
                 onClick={handleBookNow}
                 className="w-full mt-4 border-2 border-[#98635D] text-[#98635D] text-sm font-semibold py-3.5 px-8 rounded-full tracking-wider uppercase hover:bg-[#98635D] hover:text-white transition-all duration-500"
               >
-                {user ? 'Book Now — Pay Advance' : 'Sign In to Book'}
+                {user ? `Book Now — Pay ${advancePercent}% Advance` : 'Sign In to Book'}
               </button>
 
               <div className="mt-8 pt-6 border-t border-gray-100">
@@ -394,7 +479,7 @@ export default function ProductDetailPage({ params }) {
                   <h3 className="text-lg font-serif text-gray-900">Book Now</h3>
                 </div>
                 <button
-                  onClick={() => { setShowBookingModal(false); setBookingSuccess(false); setBookingCode('') }}
+                  onClick={() => { setShowBookingModal(false); setBookingSuccess(false); setBookingCode(''); setPaymentScreenshot(null); setScreenshotPreview(null) }}
                   className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -419,10 +504,18 @@ export default function ProductDetailPage({ params }) {
                   <p className="text-2xl font-bold text-gray-900 tracking-wider">{bookingCode}</p>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-600 mb-6">
-                  <p>Show this code at the shop when you visit to collect your product.</p>
-                  <p>Pay the remaining <span className="font-semibold text-[#98635D]">₹{remainingAmount.toLocaleString()}</span> at the shop.</p>
-                </div>
+                {paymentMethod === 'upi_qr' ? (
+                  <div className="space-y-2 text-sm text-gray-600 mb-6">
+                    <p>Your payment screenshot has been submitted for verification.</p>
+                    <p>Our team will verify your payment and confirm your booking shortly.</p>
+                    <p>Pay the remaining <span className="font-semibold text-[#98635D]">₹{remainingAmount.toLocaleString()}</span> at the shop when you collect your product.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm text-gray-600 mb-6">
+                    <p>Please visit our shop to complete the payment.</p>
+                    <p>Pay <span className="font-semibold text-[#98635D]">₹{advanceAmount.toLocaleString()}</span> advance + <span className="font-semibold text-gray-900">₹{remainingAmount.toLocaleString()}</span> remaining at the shop.</p>
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <Link
@@ -433,7 +526,7 @@ export default function ProductDetailPage({ params }) {
                     View My Bookings
                   </Link>
                   <button
-                    onClick={() => { setShowBookingModal(false); setBookingSuccess(false); setBookingCode('') }}
+                    onClick={() => { setShowBookingModal(false); setBookingSuccess(false); setBookingCode(''); setPaymentScreenshot(null); setScreenshotPreview(null) }}
                     className="flex-1 border border-[#98635D] text-[#98635D] text-xs font-semibold py-3 rounded-full tracking-wider uppercase hover:bg-[#98635D] hover:text-white transition-all duration-300"
                   >
                     Continue Shopping
@@ -458,28 +551,120 @@ export default function ProductDetailPage({ params }) {
                   </div>
                 </div>
 
-                {/* Advance Percentage Selection */}
+                {/* Advance Percentage Display */}
+                <div className="mb-6 p-4 bg-[#98635D]/5 rounded-xl border border-[#98635D]/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Advance Payment Required</span>
+                    <span className="text-lg font-bold text-[#98635D]">{advancePercent}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Set by store admin. You need to pay this percentage upfront to reserve your product.</p>
+                </div>
+
+                {/* Payment Method Selection */}
                 <div className="mb-6">
                   <label className="block text-xs font-medium text-gray-600 mb-3 tracking-wider uppercase">
-                    Select Advance Payment %
+                    Select Payment Method
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[10, 20, 30, 50].map((pct) => (
-                      <button
-                        key={pct}
-                        type="button"
-                        onClick={() => setAdvancePercent(pct)}
-                        className={`py-3 rounded-xl text-sm font-semibold transition-all duration-300 border-2 ${
-                          advancePercent === pct
-                            ? 'bg-[#98635D] text-white border-[#98635D] shadow-lg'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#98635D]'
-                        }`}
-                      >
-                        {pct}%
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('upi_qr')}
+                      className={`p-4 rounded-xl text-center transition-all duration-300 border-2 ${
+                        paymentMethod === 'upi_qr'
+                          ? 'bg-[#98635D] text-white border-[#98635D] shadow-lg'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-[#98635D]'
+                      }`}
+                    >
+                      <svg className={`w-6 h-6 mx-auto mb-2 ${paymentMethod === 'upi_qr' ? 'text-white' : 'text-[#98635D]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      <p className="text-sm font-semibold">UPI QR Code</p>
+                      <p className="text-[10px] opacity-75 mt-0.5">Scan & Pay</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('in_shop')}
+                      className={`p-4 rounded-xl text-center transition-all duration-300 border-2 ${
+                        paymentMethod === 'in_shop'
+                          ? 'bg-[#98635D] text-white border-[#98635D] shadow-lg'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-[#98635D]'
+                      }`}
+                    >
+                      <svg className={`w-6 h-6 mx-auto mb-2 ${paymentMethod === 'in_shop' ? 'text-white' : 'text-[#98635D]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <p className="text-sm font-semibold">Pay at Shop</p>
+                      <p className="text-[10px] opacity-75 mt-0.5">Visit & Pay</p>
+                    </button>
                   </div>
                 </div>
+
+                {/* UPI QR Section */}
+                {paymentMethod === 'upi_qr' && (
+                  <div className="mb-6">
+                    {bookingSettings.upiQrCode ? (
+                      <div className="p-4 bg-gray-50 rounded-xl text-center">
+                        <p className="text-xs font-medium text-gray-600 mb-3">Scan this QR code to pay ₹{advanceAmount.toLocaleString()}</p>
+                        <div className="w-48 h-48 mx-auto bg-white rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden mb-3">
+                          <Image src={bookingSettings.upiQrCode} alt="UPI QR Code" width={192} height={192} className="object-contain p-2" />
+                        </div>
+                        {bookingSettings.upiId && (
+                          <p className="text-xs text-gray-500">UPI ID: <span className="font-medium text-gray-700">{bookingSettings.upiId}</span></p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                        <p className="text-xs text-amber-700">QR code not configured yet. Please contact the store for payment details.</p>
+                      </div>
+                    )}
+
+                    {/* Screenshot Upload */}
+                    <div className="mt-4">
+                      <label className="block text-xs font-medium text-gray-600 mb-2 tracking-wider uppercase">
+                        Upload Payment Screenshot *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleScreenshotChange}
+                          className="hidden"
+                          id="screenshot-upload"
+                          required={paymentMethod === 'upi_qr'}
+                        />
+                        <label
+                          htmlFor="screenshot-upload"
+                          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#98635D] transition-colors"
+                        >
+                          {screenshotPreview ? (
+                            <div className="relative w-full h-full">
+                              <Image src={screenshotPreview} alt="Screenshot preview" fill className="object-contain p-2" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setPaymentScreenshot(null)
+                                  setScreenshotPreview(null)
+                                }}
+                                className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <p className="text-xs text-gray-500">Click to upload screenshot</p>
+                              <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP (max 5MB)</p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Payment Breakdown */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-xl space-y-3">
@@ -501,12 +686,22 @@ export default function ProductDetailPage({ params }) {
                 {/* How it works */}
                 <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
                   <p className="text-xs font-semibold text-amber-800 mb-2 tracking-wider uppercase">How it works</p>
-                  <ol className="text-xs text-amber-700 space-y-1.5 list-decimal list-inside">
-                    <li>Pay the advance amount online to reserve your product</li>
-                    <li>Receive a unique booking code after payment</li>
-                    <li>Visit our shop with the booking code</li>
-                    <li>Pay the remaining amount and collect your product</li>
-                  </ol>
+                  {paymentMethod === 'upi_qr' ? (
+                    <ol className="text-xs text-amber-700 space-y-1.5 list-decimal list-inside">
+                      <li>Scan the QR code and pay ₹{advanceAmount.toLocaleString()}</li>
+                      <li>Upload payment screenshot as proof</li>
+                      <li>Our team will verify your payment</li>
+                      <li>Visit our shop with booking code to collect your product</li>
+                      <li>Pay remaining ₹{remainingAmount.toLocaleString()} at the shop</li>
+                    </ol>
+                  ) : (
+                    <ol className="text-xs text-amber-700 space-y-1.5 list-decimal list-inside">
+                      <li>Your booking will be reserved</li>
+                      <li>Visit our shop to complete the payment</li>
+                      <li>Pay ₹{advanceAmount.toLocaleString()} advance + ₹{remainingAmount.toLocaleString()} remaining</li>
+                      <li>Collect your product</li>
+                    </ol>
+                  )}
                 </div>
 
                 {/* Phone */}
@@ -525,7 +720,7 @@ export default function ProductDetailPage({ params }) {
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={bookingSubmitting || !bookingPhone}
+                  disabled={bookingSubmitting || !bookingPhone || (paymentMethod === 'upi_qr' && !paymentScreenshot)}
                   className="w-full bg-[#98635D] text-white text-sm font-semibold py-4 rounded-full tracking-wider uppercase hover:bg-[#7A4E49] transition-all duration-500 shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {bookingSubmitting ? (
@@ -535,7 +730,7 @@ export default function ProductDetailPage({ params }) {
                     </>
                   ) : (
                     <>
-                      Pay ₹{advanceAmount.toLocaleString()} & Book Now
+                      {paymentMethod === 'upi_qr' ? `Upload & Pay ₹${advanceAmount.toLocaleString()}` : `Book Now — Pay ₹${advanceAmount.toLocaleString()} at Shop`}
                     </>
                   )}
                 </button>

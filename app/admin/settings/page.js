@@ -127,6 +127,12 @@ export default function SettingsPage() {
       firstOrderDiscount: '10',
       referralDiscount: '15',
       minimumOrderForCoupon: '999'
+    },
+    bookings: {
+      advancePercentage: '20',
+      upiQrCode: '',
+      upiId: '',
+      bookingTerms: 'Advance payment is non-refundable. Product must be collected within 7 days of confirmation. Remaining balance must be paid at the time of pickup.'
     }
   })
 
@@ -134,7 +140,19 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       try {
         const data = await fetchAPI('/settings')
-        setSettings(prev => ({ ...prev, ...data }))
+        if (data) {
+          const bookingsData = {
+            advancePercentage: data.advancePercentage || '20',
+            upiQrCode: data.upiQrCode || '',
+            upiId: data.upiId || '',
+            bookingTerms: data.bookingTerms || 'Advance payment is non-refundable. Product must be collected within 7 days of confirmation. Remaining balance must be paid at the time of pickup.'
+          }
+          setSettings(prev => ({
+            ...prev,
+            ...data,
+            bookings: bookingsData
+          }))
+        }
       } catch (err) {
         console.error('Failed to load settings:', err)
       } finally {
@@ -214,7 +232,8 @@ export default function SettingsPage() {
     { id: 'notifications', name: 'Notifications', icon: Bell, color: 'bg-orange-500' },
     { id: 'security', name: 'Security', icon: Shield, color: 'bg-red-500' },
     { id: 'seo', name: 'SEO', icon: Globe, color: 'bg-teal-500' },
-    { id: 'discounts', name: 'Discounts', icon: Tag, color: 'bg-indigo-500' }
+    { id: 'discounts', name: 'Discounts', icon: Tag, color: 'bg-indigo-500' },
+    { id: 'bookings', name: 'Bookings', icon: CreditCard, color: 'bg-violet-500' }
   ]
 
   if (isLoading) {
@@ -670,6 +689,101 @@ export default function SettingsPage() {
                         <input type="number" value={settings.discounts.minimumOrderForCoupon} onChange={(e) => handleNestedChange('discounts', 'minimumOrderForCoupon', e.target.value)} className={inputClass} />
                       </InputField>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bookings */}
+            {activeTab === 'bookings' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Booking & Advance Payment Settings</h2>
+                  <p className="text-sm text-gray-500">Configure pre-booking and advance payment options</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField label="Default Advance Payment (%)" required>
+                      <input type="number" min="1" max="100" value={settings.bookings.advancePercentage} onChange={(e) => handleNestedChange('bookings', 'advancePercentage', e.target.value)} className={inputClass} />
+                      <p className="text-xs text-gray-400 mt-1">Percentage of total amount customers pay upfront</p>
+                    </InputField>
+                    <InputField label="UPI ID">
+                      <input type="text" value={settings.bookings.upiId} onChange={(e) => handleNestedChange('bookings', 'upiId', e.target.value)} className={inputClass} placeholder="yourname@upi" />
+                      <p className="text-xs text-gray-400 mt-1">Displayed to customers for manual UPI payment</p>
+                    </InputField>
+                  </div>
+                  <div>
+                    <InputField label="UPI QR Code">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id="qr-upload"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files[0]
+                              if (!file) return
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error('File size must be less than 5MB')
+                                return
+                              }
+                              try {
+                                const formData = new FormData()
+                                formData.append('qr', file)
+                                const result = await fetchAPI('/settings/upload-qr', {
+                                  method: 'POST',
+                                  body: formData,
+                                  isFormData: true,
+                                })
+                                handleNestedChange('bookings', 'upiQrCode', result.filePath)
+                                toast.success('QR code uploaded successfully!')
+                              } catch (err) {
+                                toast.error('Failed to upload QR code')
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="qr-upload"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#98635D] text-white text-sm font-medium rounded-lg cursor-pointer hover:bg-[#7A4E49] transition"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            {settings.bookings.upiQrCode ? 'Change QR Code' : 'Upload QR Code'}
+                          </label>
+                          {settings.bookings.upiQrCode && (
+                            <button
+                              type="button"
+                              onClick={() => handleNestedChange('bookings', 'upiQrCode', '')}
+                              className="text-xs text-red-500 hover:text-red-700 underline"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400">Upload your UPI QR code image (JPG, PNG, WebP, max 5MB)</p>
+                      </div>
+                    </InputField>
+                  </div>
+                  {settings.bookings.upiQrCode && (
+                    <div className="p-4 bg-gray-50 rounded-xl">
+                      <p className="text-xs font-medium text-gray-600 mb-2">QR Code Preview</p>
+                      <div className="w-40 h-40 bg-white rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden">
+                        <img src={settings.bookings.upiQrCode} alt="UPI QR Code" className="max-w-full max-h-full object-contain p-2" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                        <div className="hidden items-center justify-center text-gray-400">
+                          <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-4 border-t border-gray-100">
+                    <InputField label="Booking Terms & Conditions">
+                      <textarea value={settings.bookings.bookingTerms} onChange={(e) => handleNestedChange('bookings', 'bookingTerms', e.target.value)} rows="4" className={inputClass + " resize-none"} />
+                      <p className="text-xs text-gray-400 mt-1">Shown to customers during the booking process</p>
+                    </InputField>
                   </div>
                 </div>
               </div>

@@ -28,9 +28,11 @@ function BookingItemImage({ src, alt }) {
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
   booked: { label: 'Booked', color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
+  pending_verification: { label: 'Payment Under Review', color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
   shipped: { label: 'Shipped', color: 'bg-indigo-100 text-indigo-800', dot: 'bg-indigo-500' },
   ready: { label: 'Ready for Pickup', color: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
+  ready_for_pickup: { label: 'Ready for Pickup', color: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
   delivered: { label: 'Delivered', color: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
   completed: { label: 'Completed', color: 'bg-gray-100 text-gray-800', dot: 'bg-gray-500' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
@@ -174,18 +176,53 @@ export default function MyBookingsPage() {
                     {/* Payment Summary */}
                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                       {booking.bookingType === 'advance' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="text-center p-3 bg-white rounded-xl">
-                            <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Total Amount</p>
-                            <p className="text-lg font-bold text-gray-900">₹{booking.totalAmount.toLocaleString()}</p>
+                        <div>
+                          {/* Payment Verification Status */}
+                          <div className="mb-4 flex items-center gap-2">
+                            {booking.paymentMethod === 'upi_qr' && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+                                UPI QR Payment
+                              </span>
+                            )}
+                            {booking.paymentMethod === 'in_shop' && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
+                                Pay at Shop
+                              </span>
+                            )}
+                            {booking.paymentVerified ? (
+                              <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                                Payment Verified
+                              </span>
+                            ) : booking.paymentMethod === 'upi_qr' ? (
+                              <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
+                                Awaiting Verification
+                              </span>
+                            ) : null}
                           </div>
-                          <div className="text-center p-3 bg-[#98635D]/5 rounded-xl">
-                            <p className="text-[10px] tracking-wider uppercase text-[#98635D] mb-1">Paid ({booking.advancePercentage}%)</p>
-                            <p className="text-lg font-bold text-[#98635D]">₹{booking.advanceAmount?.toLocaleString()}</p>
-                          </div>
-                          <div className="text-center p-3 bg-amber-50 rounded-xl">
-                            <p className="text-[10px] tracking-wider uppercase text-amber-600 mb-1">Pay at Shop</p>
-                            <p className="text-lg font-bold text-amber-700">₹{booking.remainingAmount?.toLocaleString()}</p>
+
+                          {/* Payment Screenshot */}
+                          {booking.paymentScreenshot && (
+                            <div className="mb-4">
+                              <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Payment Screenshot</p>
+                              <div className="relative w-24 h-20 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                <Image src={booking.paymentScreenshot} alt="Payment Screenshot" fill className="object-contain p-1" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="text-center p-3 bg-white rounded-xl">
+                              <p className="text-[10px] tracking-wider uppercase text-gray-400 mb-1">Total Amount</p>
+                              <p className="text-lg font-bold text-gray-900">₹{booking.totalAmount.toLocaleString()}</p>
+                            </div>
+                            <div className="text-center p-3 bg-[#98635D]/5 rounded-xl">
+                              <p className="text-[10px] tracking-wider uppercase text-[#98635D] mb-1">Paid ({booking.advancePercentage}%)</p>
+                              <p className="text-lg font-bold text-[#98635D]">₹{booking.advanceAmount?.toLocaleString()}</p>
+                            </div>
+                            <div className="text-center p-3 bg-amber-50 rounded-xl">
+                              <p className="text-[10px] tracking-wider uppercase text-amber-600 mb-1">Pay at Shop</p>
+                              <p className="text-lg font-bold text-amber-700">₹{booking.remainingAmount?.toLocaleString()}</p>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -208,9 +245,25 @@ export default function MyBookingsPage() {
                     {booking.status !== 'completed' && booking.status !== 'cancelled' && (
                       <div className="px-6 py-3 border-t border-gray-100">
                         {booking.bookingType === 'advance' ? (
-                          <p className="text-xs text-gray-500 text-center">
-                            Visit our shop with booking code <span className="font-bold text-gray-900">{booking.bookingCode}</span> and pay ₹{booking.remainingAmount?.toLocaleString()} to collect your product.
-                          </p>
+                          <div className="space-y-1">
+                            {booking.status === 'pending_verification' ? (
+                              <p className="text-xs text-amber-600 text-center font-medium">
+                                Your payment screenshot is under review. We&apos;ll confirm your booking shortly.
+                              </p>
+                            ) : booking.status === 'confirmed' ? (
+                              <p className="text-xs text-blue-600 text-center font-medium">
+                                Booking confirmed! Visit our shop with booking code <span className="font-bold">{booking.bookingCode}</span> and pay ₹{booking.remainingAmount?.toLocaleString()} to collect your product.
+                              </p>
+                            ) : booking.status === 'ready_for_pickup' ? (
+                              <p className="text-xs text-emerald-600 text-center font-medium">
+                                Your product is ready! Visit our shop with booking code <span className="font-bold">{booking.bookingCode}</span> to collect it.
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-500 text-center">
+                                Visit our shop with booking code <span className="font-bold text-gray-900">{booking.bookingCode}</span> and pay ₹{booking.remainingAmount?.toLocaleString()} to collect your product.
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <p className="text-xs text-gray-500 text-center">
                             Your order is being processed. You&apos;ll receive updates on the status.

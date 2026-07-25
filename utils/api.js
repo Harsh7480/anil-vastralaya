@@ -3,10 +3,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 export const fetchAPI = async (endpoint, options = {}) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+  const headers = {};
+
+  if (!options.isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -14,7 +15,10 @@ export const fetchAPI = async (endpoint, options = {}) => {
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
   });
 
   const data = await response.json();

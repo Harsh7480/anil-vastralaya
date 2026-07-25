@@ -37,6 +37,11 @@ export default function Sidebar({ sidebarOpen }) {
     //   icon: FiUpload,
     // },
     {
+      name: 'Orders',
+      href: '/admin/orders',
+      icon: FiShoppingBag,
+    },
+    {
       name: 'Testimonials',
       href: '/admin/testimonials',
       icon: FiStar,
